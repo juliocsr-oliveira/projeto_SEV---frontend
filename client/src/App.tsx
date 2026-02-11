@@ -15,6 +15,7 @@ import EditValidation from './components/EditValidation';
 import EditValidationFields, { ValidationField } from './components/EditValidationFields';
 import { auditLog } from './utils/auditLog';
 import { seedDemoLogs } from './utils/seedLogs';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type UserRole = 'testador' | 'auditor' | 'administrador';
 
@@ -74,13 +75,21 @@ type Screen =
   | 'settings';
 
 export default function App() {
+  const { user, isAuthenticated, logout } = useAuth(); 
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
-  const [user, setUser] = useState<User | null>(null);
   const [currentValidation, setCurrentValidation] = useState<ValidationSession | null>(null);
   const [validationDraft, setValidationDraft] = useState<ValidationDraft | null>(null);
   const [selectedSystems, setSelectedSystems] = useState<SelectedSystem[]>([]);
   const [validationFields, setValidationFields] = useState<ValidationField[]>([]);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      setCurrentScreen('home');
+    } else {
+      setCurrentScreen('login');
+    }
+  }, [isAuthenticated]);
+  
   // Inicializar logs de demonstração
   useEffect(() => {
     seedDemoLogs();
@@ -90,17 +99,12 @@ export default function App() {
     setCurrentScreen(screen);
   };
 
-  const handleLogin = (userData: User) => {
-    setUser(userData);
+    const handleLogin = () => {
     setCurrentScreen('home');
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    setCurrentValidation(null);
-    setValidationDraft(null);
-    setSelectedSystems([]);
-    setValidationFields([]);
+    const handleLogout = () => {
+    logout();
     setCurrentScreen('login');
   };
 
@@ -254,7 +258,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white">
-      {currentScreen === 'login' && <Login onLogin={handleLogin} />}
+      {currentScreen === 'login' && (
+        <Login onLogin={handleLogin} />
+      )}
       {currentScreen === 'home' && user && (
         <Home 
           user={user} 

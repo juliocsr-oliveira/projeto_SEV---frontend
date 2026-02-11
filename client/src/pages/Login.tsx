@@ -2,7 +2,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
-import { useLocation } from 'wouter';
 import { AlertCircle } from 'lucide-react';
 
 /**
@@ -13,7 +12,6 @@ import { AlertCircle } from 'lucide-react';
  */
 export default function Login() {
   const { login } = useAuth();
-  const [, navigate] = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -31,7 +29,6 @@ export default function Login() {
       }
       
       await login(email, password);
-      navigate('/home');
     } catch (err) {
       setError('Erro ao fazer login. Tente novamente.');
     } finally {
