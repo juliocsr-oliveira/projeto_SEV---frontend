@@ -19,18 +19,21 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    if (!email || !password) {
+      setError('Por favor, preencha todos os campos');
+      return;
+    }
 
     try {
-      if (!email || !password) {
-        setError('Por favor, preencha todos os campos');
-        return;
-      }
+      setError('');
+      setLoading(true):
       
       await login(email, password);
-    } catch (err) {
-      setError('Erro ao fazer login. Tente novamente.');
+
+    } catch (err: any) {
+      const errorMenssage = err.response?.data?.detail || 'Erro ao fazer login. Verifique suas credenciais.';
+      
+      setError(errorMenssage);
     } finally {
       setLoading(false);
     }

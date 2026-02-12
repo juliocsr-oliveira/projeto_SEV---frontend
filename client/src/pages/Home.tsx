@@ -34,6 +34,10 @@ export default function Home() {
     return null;
   }
 
+  if (!user) {
+    return <div> Carregando...</div>;
+  }
+
   const handleStartValidation = () => {
     setShowPendingModal(false);
     navigate('/insert-key');

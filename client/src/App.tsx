@@ -99,13 +99,8 @@ export default function App() {
     setCurrentScreen(screen);
   };
 
-    const handleLogin = () => {
-    setCurrentScreen('home');
-  };
-
     const handleLogout = () => {
     logout();
-    setCurrentScreen('login');
   };
 
   // Nova função: Iniciar processo de criação de validação
@@ -256,18 +251,14 @@ export default function App() {
     returnToHome();
   };
 
-  return (
-    <div className="min-h-screen bg-white">
-      {currentScreen === 'login' && (
-        <Login onLogin={handleLogin} />
-      )}
-      {currentScreen === 'home' && user && (
-        <Home 
-          user={user} 
-          onNavigate={navigateTo}
-          onLogout={handleLogout}
-        />
-      )}
+ return (
+  <div className="min-h-screen bg-white">
+    {currentScreen === 'login' && <Login />}
+
+    {currentScreen === 'home' && (
+      <Home onNavigate={navigateTo}
+      />
+    )}
       {currentScreen === 'create-validation' && user && (
         <CreateValidation 
           onNext={handleValidationCreated}
