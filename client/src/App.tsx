@@ -1,23 +1,21 @@
 import { useState, useEffect } from 'react';
-import Login from './components/Login';
-import Home from './components/Home';
-import CreateValidation, { ValidationDraft } from './components/CreateValidation';
-import SystemSelection, { SelectedSystem } from './components/SystemSelection';
-import ValidationCreated from './components/ValidationCreated';
-import EnterKey from './components/EnterKey';
-import ValidationExecution from './components/ValidationExecution';
-import Finalization from './components/Finalization';
-import PreviousValidations from './components/PreviousValidations';
-import KnowledgeBase from './components/KnowledgeBase';
-import Settings from './components/Settings';
-import ValidationStructure from './components/ValidationStructure';
-import EditValidation from './components/EditValidation';
-import EditValidationFields, { ValidationField } from './components/EditValidationFields';
-import { auditLog } from './utils/auditLog';
-import { seedDemoLogs } from './utils/seedLogs';
+import Login from '@/pages/Login';
+import Home from '@/pages/Home';
+import CreateValidation, { ValidationDraft } from '@/pages/CreateValidation';
+import SystemSelection, { SelectedSystem } from '@/pages/SystemSelection';
+import ValidationCreated from '@/pages/ValidationCreated';
+import EnterKey from '@/pages/EnterKey';
+import ValidationExecution from '@/pages/ValidationExecution';
+import Finalization from '@/pages/Finalization';
+import PreviousValidations from '@/pages/PreviousValidations';
+import KnowledgeBase from '@/pages/KnowledgeBase';
+import Settings from '@/pages/Settings';
+import ValidationStructure from '@/pages/ValidationStructure';
+import EditValidation from '@/pages/EditValidation';
+import EditValidationFields, { ValidationField } from '@/pages/EditValidationFields';
+import { auditLog } from '@/utils/auditLog';
+import { seedDemoLogs } from '@/utils/seedLogs';
 import { useAuth } from '@/contexts/AuthContext';
-
-export type UserRole = 'testador' | 'auditor' | 'administrador';
 
 export interface User {
   name: string;

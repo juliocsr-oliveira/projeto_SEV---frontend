@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { User } from '../App';
 import { ValidationDraft } from './CreateValidation';
-import Header from './Header';
+import Header from '../components/Header';
 import { ArrowLeft, Check, AlertCircle, Server } from 'lucide-react';
 import { 
   Breadcrumb, 
@@ -10,7 +10,7 @@ import {
   BreadcrumbList, 
   BreadcrumbPage, 
   BreadcrumbSeparator 
-} from './ui/breadcrumb';
+} from '../components/ui/breadcrumb';
 
 interface SystemSelectionProps {
   validationDraft: ValidationDraft;

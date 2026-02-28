@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, ValidationSession } from '../App';
-import Header from './Header';
+import Header from '../components/Header';
 import { ArrowLeft, Edit, Lock, Calendar, AlertCircle } from 'lucide-react';
 
 interface EditValidationProps {

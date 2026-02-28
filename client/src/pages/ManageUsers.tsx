@@ -37,7 +37,7 @@ export default function ManageUsers() {
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'testador', sector: 'Passageiros' });
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'admin') {
+    if (!isAuthenticated || user?.role !== 'ADMIN') {
       navigate('/home');
     }
   }, [isAuthenticated, user, navigate]);

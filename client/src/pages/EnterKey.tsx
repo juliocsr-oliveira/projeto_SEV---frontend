@@ -1,8 +1,9 @@
+import api from '@/services/api';
 import { useState } from 'react';
-import { User, ValidationSession } from '../App';
-import Header from './Header';
+import { User, ValidationSession } from '@/App';
+import Header from '@/components/Header';
 import { ArrowLeft, Key, AlertCircle } from 'lucide-react';
-import { auditLog } from '../utils/auditLog';
+import { auditLog } from '@/utils/auditLog';
 
 interface EnterKeyProps {
   onBack: () => void;
@@ -15,44 +16,47 @@ export default function EnterKey({ onBack, onValidKey, user }: EnterKeyProps) {
   const [error, setError] = useState('');
   const [isValidating, setIsValidating] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsValidating(true);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
+  setIsValidating(true);
 
-    // Simular validação de chave
-    setTimeout(() => {
-      // Buscar validações pendentes no localStorage
-      const pendingValidations = JSON.parse(localStorage.getItem('sev-pending-validations') || '[]');
-      const validation = pendingValidations.find((v: any) => v.accessKey === accessKey);
+  try {
+    // 1️⃣ Buscar plano pela key
+    const planResponse = await api.get(
+      `/test-plans/by-key/${accessKey}/`
+    );
 
-      if (validation) {
-        // Chave válida - converter para ValidationSession
-        const validationSession: ValidationSession = {
-          ...validation,
-          startTime: new Date(validation.startTime),
-          testerName: user.name,
-          status: 'em_andamento'
-        };
+    const testPlan = planResponse.data;
 
-        // Registrar log
-        auditLog.register({
-          user: user.name,
-          department: user.department,
-          action: 'INICIO_VALIDACAO',
-          system: validation.system,
-          environment: validation.environment,
-          validationId: validation.id,
-          details: `Acesso via chave: ${accessKey}`
-        });
+    // 2️⃣ Criar sessão real no backend
+    const sessionResponse = await api.post('/validation-sessions/', {
+      test_plan: testPlan.id
+    });
 
-        onValidKey(validationSession);
-      } else {
-        setError('Chave inválida ou validação não encontrada');
-        setIsValidating(false);
-      }
-    }, 800);
-  };
+    const session = sessionResponse.data;
+
+    // 3️⃣ Montar objeto que o front espera
+    const validationSession = {
+      ...session,
+      testPlan: testPlan,
+      testCases: testPlan.test_cases || [],
+    };
+
+    onValidKey(validationSession);
+
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      setError('Chave inválida ou validação não disponível.');
+    } else if (error.response?.data?.detail) {
+      setError(error.response.data.detail);
+    } else {
+      setError('Erro ao iniciar validação.');
+    }
+  } finally {
+    setIsValidating(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -68,7 +72,7 @@ export default function EnterKey({ onBack, onValidKey, user }: EnterKeyProps) {
             Voltar
           </button>
 
-          <div className="bg-white rounded-lg shadow-md p-8">
+          <div className="bg-white rounded-lg border-l-4 border-[#013171] p-8">
             <div className="flex items-center gap-4 mb-6">
               <div className="bg-[#013171] p-3 rounded-lg">
                 <Key className="w-8 h-8 text-white" />

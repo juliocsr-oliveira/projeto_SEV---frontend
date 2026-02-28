@@ -1,24 +1,18 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { FormEvent, useState } from 'react';
+import { AlertCircle, LogIn } from 'lucide-react';
 
-/**
- * Design: Corporativo, limpo, centralizado
- * - Card centralizado com formulário de login
- * - Título do sistema em destaque
- * - Link para base de conhecimento no rodapé
- */
 export default function Login() {
   const { login } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
     if (!email || !password) {
       setError('Por favor, preencha todos os campos');
       return;
@@ -26,38 +20,48 @@ export default function Login() {
 
     try {
       setError('');
-      setLoading(true):
-      
-      await login(email, password);
+      setLoading(true);
+
+      const success = await login(email, password);
+
+      if (!success) {
+        setError('Credenciais inválidas.');
+      }
 
     } catch (err: any) {
-      const errorMenssage = err.response?.data?.detail || 'Erro ao fazer login. Verifique suas credenciais.';
-      
-      setError(errorMenssage);
+      const errorMessage =
+        err.response?.data?.detail ||
+        'Erro ao fazer login. Verifique suas credenciais.';
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
-      {/* Card de Login */}
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-block w-16 h-16 bg-[#013171] rounded-lg flex items-center justify-center mb-4">
-            <span className="text-white font-bold text-2xl">SEV</span>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
+
+      <div className="w-full max-w-md bg-white rounded-lg shadow-xl p-10 border border-gray-200">
+
+        {/* Logo Institucional */}
+        <div className="text-center mb-10">
+          <div className="w-20 h-20 bg-[#013171] rounded-lg flex items-center justify-center mx-auto mb-6 shadow-md">
+            <LogIn className="w-10 h-10 text-white" />
           </div>
+
           <h1 className="text-3xl font-bold text-[#013171] mb-2">
             SEV
           </h1>
+
           <p className="text-gray-600 text-sm">
             Sistema de Evidência de Validação
           </p>
         </div>
 
         {/* Formulário */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
+
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2 text-sm text-red-700">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -69,51 +73,47 @@ export default function Login() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Email
             </label>
-            <Input
+
+            <input
               type="email"
               placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
-              className="w-full"
+              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none transition-all"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Dica: use "auditor" ou "admin" no email para testar outros perfis
-            </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Senha
             </label>
-            <Input
+
+            <input
               type="password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
-              className="w-full"
+              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none transition-all"
             />
           </div>
 
-          <Button
+          <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#013171] hover:bg-[#0a1f4a] text-white font-medium py-2"
+            className="w-full bg-[#013171] hover:bg-[#024a9f] text-white py-3 rounded-md transition-all transform hover:scale-[1.02] font-medium shadow-md"
           >
-            {loading ? 'A entrar...' : 'Entrar'}
-          </Button>
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+
         </form>
 
         {/* Rodapé */}
-        <div className="mt-8 pt-6 border-t border-gray-200 text-center">
-          <a
-            href="#"
-            className="text-sm text-[#013171] hover:underline font-medium"
-          >
-            Base de Conhecimento
-          </a>
+        <div className="mt-8 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
+          <p>SEV © {new Date().getFullYear()}</p>
         </div>
+
       </div>
     </div>
   );

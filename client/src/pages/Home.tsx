@@ -1,111 +1,116 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { Header } from '@/components/Header';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useLocation } from 'wouter';
-import { useState, useEffect } from 'react';
+import Header from '@/components/Header';
+import { useEffect } from 'react';
 import { CheckCircle2, FileText, BookOpen, Settings, Plus } from 'lucide-react';
 
-/**
- * Design: Dashboard corporativo com cards grandes
- * - Header azul com logo
- * - Cards de ação principais centralizados
- * - Modal de validação pendente para testadores
- * - Diferentes botões por perfil
- */
-export default function Home() {
-  const { user, isAuthenticated, pendingValidation, setPendingValidation } = useAuth();
-  const [, navigate] = useLocation();
-  const [showPendingModal, setShowPendingModal] = useState(false);
+type Screen =
+  | 'login'
+  | 'home'
+  | 'create-validation'
+  | 'system-selection'
+  | 'edit-validation-fields'
+  | 'validation-created'
+  | 'validation-structure'
+  | 'enter-key'
+  | 'edit-validation'
+  | 'validation-execution'
+  | 'finalization'
+  | 'previous-validations'
+  | 'knowledge-base'
+  | 'settings';
+
+interface HomeProps {
+  onNavigate: (screen: Screen) => void;
+}
+
+export default function Home({ onNavigate }: HomeProps) {
+  const { user, isAuthenticated, logout } = useAuth();
+
+  console.log("AUTH", isAuthenticated);
+  console.log("USER", user);
+  console.log("ROLE REAL:", user.role);
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/');
-      return;
+      onNavigate('login');
     }
-
-    // Mostrar modal de validação pendente para testadores
-    if (user?.role === 'testador' && pendingValidation) {
-      setShowPendingModal(true);
-    }
-  }, [isAuthenticated, user, pendingValidation, navigate]);
+  }, [isAuthenticated, onNavigate]);
 
   if (!isAuthenticated || !user) {
-    return null;
+    return <div className="p-10 text-center">Carregando...</div>;
   }
 
-  if (!user) {
-    return <div> Carregando...</div>;
-  }
-
-  const handleStartValidation = () => {
-    setShowPendingModal(false);
-    navigate('/insert-key');
-  };
-
-  const handleClosePendingModal = () => {
-    setShowPendingModal(false);
-  };
-
-  // Definir botões por perfil
   const getActionButtons = () => {
     const buttons = [];
 
-    if (user.role === 'testador') {
+    // TESTADOR
+    if (user.role === 'TESTADOR') {
       buttons.push({
         id: 'start',
-        label: 'Iniciar Validação',
+        title: 'Iniciar Validação',
+        description: 'Acessar validação com chave fornecida',
         icon: CheckCircle2,
-        onClick: () => navigate('/insert-key'),
-        color: 'bg-[#013171]',
-      });
-    } else if (user.role === 'auditor') {
-      buttons.push({
-        id: 'create',
-        label: 'Criar Validação',
-        icon: Plus,
-        onClick: () => navigate('/select-system'),
-        color: 'bg-[#013171]',
-      });
-      buttons.push({
-        id: 'edit',
-        label: 'Editar Validação',
-        icon: FileText,
-        onClick: () => navigate('/validations'),
-        color: 'bg-blue-600',
-      });
-    } else if (user.role === 'admin') {
-      buttons.push({
-        id: 'create',
-        label: 'Criar Validação',
-        icon: Plus,
-        onClick: () => navigate('/select-system'),
-        color: 'bg-[#013171]',
-      });
-      buttons.push({
-        id: 'config',
-        label: 'Configurações',
-        icon: Settings,
-        onClick: () => navigate('/settings'),
-        color: 'bg-blue-600',
+        screen: 'enter-key' as Screen,
       });
     }
 
-    buttons.push({
-      id: 'history',
-      label: 'Validações Anteriores',
-      icon: FileText,
-      onClick: () => navigate('/validations'),
-      color: 'bg-gray-600',
-    });
+    // AUDITOR
+    if (user.role === 'AUDITOR') {
+      buttons.push(
+        {
+          id: 'create',
+          title: 'Criar Validação',
+          description: 'Montar plano de testes e gerar chave',
+          icon: Plus,
+          screen: 'create-validation' as Screen,
+        },
+        {
+          id: 'edit',
+          title: 'Editar Validação',
+          description: 'Modificar validações existentes',
+          icon: FileText,
+          screen: 'edit-validation' as Screen,
+        }
+      );
+    }
 
-    buttons.push({
-      id: 'knowledge',
-      label: 'Base de Conhecimento',
-      icon: BookOpen,
-      onClick: () => navigate('/knowledge-base'),
-      color: 'bg-gray-600',
-    });
+    // ADMIN
+    if (user.role === 'ADMIN') {
+      buttons.push(
+        {
+          id: 'create',
+          title: 'Criar Validação',
+          description: 'Montar plano de testes e gerar chave',
+          icon: Plus,
+          screen: 'create-validation' as Screen,
+        },
+        {
+          id: 'settings',
+          title: 'Configurações',
+          description: 'Administrar usuários e extrair logs',
+          icon: Settings,
+          screen: 'settings' as Screen,
+        }
+      );
+    }
+
+    // Botões comuns a todos
+    buttons.push(
+      {
+        id: 'history',
+        title: 'Validações Anteriores',
+        description: 'Consultar histórico e fazer download',
+        icon: FileText,
+        screen: 'previous-validations' as Screen,
+      },
+      {
+        id: 'knowledge',
+        title: 'Base de Conhecimento',
+        description: 'Guias, instruções e boas práticas',
+        icon: BookOpen,
+        screen: 'knowledge-base' as Screen,
+      }
+    );
 
     return buttons;
   };
@@ -114,72 +119,54 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+<Header
+  user={user} onLogout={() => {logout(); onNavigate('login');}}/>
 
-      {/* Conteúdo Principal */}
-      <main className="container mx-auto px-4 py-12">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">
-            Bem-vindo, {user.name}
-          </h2>
-          <p className="text-gray-600 mt-2">
-            Setor: <span className="font-medium">{user.sector}</span>
-          </p>
-        </div>
+      <main className="container mx-auto px-6 py-12">
+        <div className="max-w-5xl mx-auto">
 
-        {/* Grid de Botões */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {buttons.map((btn) => {
-            const Icon = btn.icon;
-            return (
-              <button
-                key={btn.id}
-                onClick={btn.onClick}
-                className={`${btn.color} hover:opacity-90 transition-opacity rounded-lg p-6 text-white text-left shadow-md hover:shadow-lg`}
-              >
-                <Icon className="w-8 h-8 mb-3" />
-                <h3 className="text-lg font-semibold">{btn.label}</h3>
-              </button>
-            );
-          })}
+          {/* Título */}
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">
+              Bem-vindo, {user.role}
+            </h2>
+            <p className="text-gray-600 capitalize">
+              Perfil: {user.role.toLowerCase()}
+            </p>
+          </div>
+
+          {/* Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {buttons.map((btn) => {
+              const Icon = btn.icon;
+
+              return (
+                <button
+                  key={btn.id}
+                  onClick={() => onNavigate(btn.screen)}
+                  className="bg-[#013171] hover:bg-[#024a9f] text-white p-8 rounded-lg shadow-lg transition-all transform hover:scale-105 text-left"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="bg-white/20 p-3 rounded-lg">
+                      <Icon className="w-8 h-8" />
+                    </div>
+
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold mb-2">
+                        {btn.title}
+                      </h3>
+                      <p className="text-blue-100 text-sm">
+                        {btn.description}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
         </div>
       </main>
-
-      {/* Modal de Validação Pendente */}
-      <Dialog open={showPendingModal} onOpenChange={setShowPendingModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-blue-600" />
-              Validação Disponível
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-gray-700 mb-4">
-              Existe uma validação pendente para o seu setor.
-            </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-gray-700">
-              <p><strong>Divisão:</strong> {pendingValidation?.division}</p>
-              <p><strong>Sistema:</strong> {pendingValidation?.system}</p>
-              <p><strong>Ambiente:</strong> {pendingValidation?.environment}</p>
-            </div>
-          </div>
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleClosePendingModal}
-            >
-              Fechar
-            </Button>
-            <Button
-              onClick={handleStartValidation}
-              className="bg-[#013171] hover:bg-[#0a1f4a] text-white"
-            >
-              Iniciar Agora
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

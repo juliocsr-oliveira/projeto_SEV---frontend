@@ -1,70 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { User } from '../App';
 import { ValidationDraft } from './CreateValidation';
 import { SelectedSystem } from './SystemSelection';
-import Header from './Header';
+import api from '@/services/api'
+import Header from '../components/Header';
 import { ArrowLeft, Plus, Trash2, AlertCircle } from 'lucide-react';
-import { 
-  Breadcrumb, 
-  BreadcrumbItem, 
-  BreadcrumbLink, 
-  BreadcrumbList, 
-  BreadcrumbPage, 
-  BreadcrumbSeparator 
-} from './ui/breadcrumb';
-
-interface EditValidationFieldsProps {
-  validationDraft: ValidationDraft;
-  selectedSystems: SelectedSystem[];
-  onNext: (fields: ValidationField[]) => void;
-  onBack: () => void;
-  user: User;
-}
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '../components/ui/breadcrumb';
 
 export interface ValidationField {
   id: string;
   name: string;
   description: string;
-  type: 'text' | 'checkbox' | 'select' | 'file';
-  required: boolean;
   order: number;
 }
-
-// Campos padrão iniciais
-const defaultFields: ValidationField[] = [
-  {
-    id: '1',
-    name: 'Verificar login no sistema',
-    description: 'Validar se o login está funcionando corretamente',
-    type: 'checkbox',
-    required: true,
-    order: 1
-  },
-  {
-    id: '2',
-    name: 'Testar criação de novo registro',
-    description: 'Criar um novo registro e validar se foi salvo',
-    type: 'checkbox',
-    required: true,
-    order: 2
-  },
-  {
-    id: '3',
-    name: 'Validar edição de dados',
-    description: 'Editar um registro existente e confirmar as mudanças',
-    type: 'checkbox',
-    required: true,
-    order: 3
-  },
-  {
-    id: '4',
-    name: 'Confirmar exclusão de registros',
-    description: 'Deletar um registro e verificar se foi removido',
-    type: 'checkbox',
-    required: true,
-    order: 4
-  }
-];
 
 export default function EditValidationFields({ 
   validationDraft, 
@@ -73,57 +21,104 @@ export default function EditValidationFields({
   onBack, 
   user 
 }: EditValidationFieldsProps) {
-  const [fields, setFields] = useState<ValidationField[]>(defaultFields);
+  const [fields, setFields] = useState<ValidationField[]>([]);
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldDescription, setNewFieldDescription] = useState('');
-  const [newFieldType, setNewFieldType] = useState<'text' | 'checkbox' | 'select' | 'file'>('checkbox');
-  const [newFieldRequired, setNewFieldRequired] = useState(true);
   const [error, setError] = useState('');
 
-  const handleAddField = () => {
-    if (!newFieldName.trim()) {
-      setError('Nome do campo é obrigatório');
-      return;
-    }
+  useEffect(() => {
+  fetchFields();
+  }, []);
 
-    const newField: ValidationField = {
-      id: Date.now().toString(),
+  const fetchFields = async () => {
+    try {
+      const response = await api.get("/test-case/", {
+        params: {
+          test_plan: validationDraft.id,
+          active: true
+        }
+      });
+    const data = response.data;
+
+      if (Array.isArray(data)){
+        setFields(data);
+      } else {
+        setFields(data.results || []);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar test cases", error);
+    }  
+  };
+
+  const handleAddField = async () => {
+  try {
+    await api.post("/test-case/", {
       name: newFieldName,
       description: newFieldDescription,
-      type: newFieldType,
-      required: newFieldRequired,
-      order: fields.length + 1
-    };
+      test_plan: validationDraft.id,
+      active: true,
+      order_index: fields.length + 1
+    });
 
-    setFields([...fields, newField]);
-    setNewFieldName('');
-    setNewFieldDescription('');
-    setNewFieldType('checkbox');
-    setNewFieldRequired(true);
-    setError('');
-  };
+    setNewFieldName("");
+    setNewFieldDescription("");
 
-  const handleRemoveField = (id: string) => {
-    setFields(fields.filter(f => f.id !== id));
-  };
+    fetchFields(); // recarrega lista
+
+  } catch (error) {
+    console.error("Erro ao adicionar campo:", error);
+  }
+};
+
+const handleRemoveField = async (id: string) => {
+  try {
+    await api.patch(`/test-case/${id}/`, {
+      active: false
+    });
+
+    fetchFields();
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const handleUpdateField = (id: string, updates: Partial<ValidationField>) => {
     setFields(fields.map(f => f.id === id ? { ...f, ...updates } : f));
   };
 
-  const handleMoveUp = (index: number) => {
-    if (index === 0) return;
-    const newFields = [...fields];
-    [newFields[index], newFields[index - 1]] = [newFields[index - 1], newFields[index]];
-    setFields(newFields);
-  };
+const handleMoveUp = async (index: number) => {
+  if (index === 0) return;
 
-  const handleMoveDown = (index: number) => {
-    if (index === fields.length - 1) return;
-    const newFields = [...fields];
-    [newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]];
-    setFields(newFields);
-  };
+  const current = fields[index];
+  const above = fields[index - 1];
+
+  await api.patch(`/test-case/${current.id}/`, {
+    order_index: above.order_index
+  });
+
+  await api.patch(`/test-case/${above.id}/`, {
+    order_index: current.order_index
+  });
+
+  fetchFields();
+};
+
+const handleMoveDown = async (index: number) => {
+  if (index === fields.length - 1) return;
+
+  const current = fields[index];
+  const above = fields[index + 1];
+
+  await api.patch(`/test-case/${current.id}/`, {
+    order_index: below.order_index
+  });
+
+  await api.patch(`/test-case/${below.id}/`, {
+    order_index: current.order_index
+  });
+
+  fetchFields();
+};
 
   const handleSubmit = () => {
     if (fields.length === 0) {
@@ -131,7 +126,7 @@ export default function EditValidationFields({
       return;
     }
 
-    onNext(fields);
+    onNext();
   };
 
   return (
@@ -235,12 +230,6 @@ export default function EditValidationFields({
                             {index + 1}
                           </span>
                           <h3 className="font-medium text-gray-900">{field.name}</h3>
-                          {field.required && (
-                            <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Obrigatório</span>
-                          )}
-                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                            {field.type}
-                          </span>
                         </div>
                         <p className="text-sm text-gray-600">{field.description}</p>
                       </div>
@@ -277,8 +266,8 @@ export default function EditValidationFields({
           </div>
 
           {/* Adicionar Novo Campo */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Adicionar Novo Campo</h2>
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-8 border-l-4 border-[#013171]">
+            <h2 className="text-lg font-semibold text-[#013171] mb-4">Adicionar Novo Campo</h2>
             
             <div className="space-y-4">
               <div>
@@ -308,35 +297,7 @@ export default function EditValidationFields({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de Campo
-                  </label>
-                  <select
-                    value={newFieldType}
-                    onChange={(e) => setNewFieldType(e.target.value as any)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#013171] focus:border-transparent"
-                  >
-                    <option value="checkbox">Checkbox (OK/Falhou/N.A.)</option>
-                    <option value="text">Texto</option>
-                    <option value="select">Seleção</option>
-                    <option value="file">Arquivo</option>
-                  </select>
                 </div>
-
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newFieldRequired}
-                      onChange={(e) => setNewFieldRequired(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 text-[#013171] focus:ring-[#013171]"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Campo Obrigatório</span>
-                  </label>
-                </div>
-              </div>
-
               <button
                 onClick={handleAddField}
                 className="w-full bg-[#013171] text-white px-4 py-2 rounded-lg hover:bg-[#024a9f] transition-colors font-medium flex items-center justify-center gap-2"
