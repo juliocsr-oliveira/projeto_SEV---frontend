@@ -1,22 +1,24 @@
-import { User } from '../App';
+import { useAuth } from '@/contexts/AuthContext';
 import { LogOut, User as UserIcon } from 'lucide-react';
-import { auditLog } from '../utils/auditLog';
+import { auditLog } from '@/utils/auditLog';
 
 interface HeaderProps {
-  user: User;
   onLogout?: () => void;
 }
 
-export default function Header({ user, onLogout }: HeaderProps) {
+export default function Header({ onLogout }: HeaderProps) {
+  const { user } = useAuth();
+
+  if (!user) return null;
+
   const handleLogout = () => {
-    // Registrar log de logout
     auditLog.register({
       user: user.name,
       department: user.department,
       action: 'LOGOUT_REALIZADO',
       details: `Logout do sistema`
     });
-    
+
     if (onLogout) {
       onLogout();
     }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { User } from '../App';
 import { ValidationDraft } from './CreateValidation';
 import { SelectedSystem } from './SystemSelection';
-import Header from './Header';
+import Header from '../components/Header';
 import { Check, Copy, ArrowLeft, Key } from 'lucide-react';
 import { 
   Breadcrumb, 
@@ -11,7 +11,7 @@ import {
   BreadcrumbList, 
   BreadcrumbPage, 
   BreadcrumbSeparator 
-} from './ui/breadcrumb';
+} from '../components/ui/breadcrumb';
 
 interface ValidationCreatedProps {
   validationDraft: ValidationDraft;
@@ -31,13 +31,7 @@ export default function ValidationCreated({
   const [keyCopied, setKeyCopied] = useState(false);
 
   // Gerar chave de acesso única
-  const generateAccessKey = () => {
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `VAL-${timestamp}-${random}`;
-  };
-
-  const [accessKey] = useState(generateAccessKey());
+  const accessKey = validationDraft.accessKey;
 
   const copyKeyToClipboard = () => {
     try {

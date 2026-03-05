@@ -1,58 +1,71 @@
+import api from '@/services/api';
 import { useState } from 'react';
-import { User, ValidationSession } from '../App';
-import Header from './Header';
+import { User, ValidationSession } from '@/App';
+import Header from '@/components/Header';
 import { ArrowLeft, Key, AlertCircle } from 'lucide-react';
-import { auditLog } from '../utils/auditLog';
+import { auditLog } from '@/utils/auditLog';
+import { data } from 'react-router-dom';
 
 interface EnterKeyProps {
   onBack: () => void;
-  onValidKey: (validation: ValidationSession) => void;
+  onSuccess: (validationSession: ValidationSession) => void;
   user: User;
 }
 
-export default function EnterKey({ onBack, onValidKey, user }: EnterKeyProps) {
+export default function EnterKey({ onBack, onSuccess, user }: EnterKeyProps) {
   const [accessKey, setAccessKey] = useState('');
   const [error, setError] = useState('');
   const [isValidating, setIsValidating] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsValidating(true);
 
-    // Simular validação de chave
-    setTimeout(() => {
-      // Buscar validações pendentes no localStorage
-      const pendingValidations = JSON.parse(localStorage.getItem('sev-pending-validations') || '[]');
-      const validation = pendingValidations.find((v: any) => v.accessKey === accessKey);
+try {
+  const response = await api.get(`/test-plans/by-key/${accessKey}/`);
 
-      if (validation) {
-        // Chave válida - converter para ValidationSession
-        const validationSession: ValidationSession = {
-          ...validation,
-          startTime: new Date(validation.startTime),
-          testerName: user.name,
-          status: 'em_andamento'
-        };
+const data = response.data;
 
-        // Registrar log
-        auditLog.register({
-          user: user.name,
-          department: user.department,
-          action: 'INICIO_VALIDACAO',
-          system: validation.system,
-          environment: validation.environment,
-          validationId: validation.id,
-          details: `Acesso via chave: ${accessKey}`
-        });
+const validationSession: ValidationSession = {
+  id: data.id,
+  user: user?.name || '',
+  department: user?.department || '',
+  division: data.division || '',
+  system: data.system || '',
+  environment: data.environment || '',
+  startTime: new Date(),
+  items: (data.test_cases || []).map((tc: any) => ({
+    id: tc.id,
+    item: tc.title,
+    status: '',
+    evidence: null,
+    evidencePreview: null,
+    comment: ''
+  })),
+  status: 'em_andamento',
+  structureVersion: '2.1.0',
+  validationName: data.name,
+  validationType: data.validation_type,
+  responsible: data.responsible_name,
+  validationStatus: data.status
+};
 
-        onValidKey(validationSession);
-      } else {
-        setError('Chave inválida ou validação não encontrada');
-        setIsValidating(false);
-      }
-    }, 800);
-  };
+  onSuccess(validationSession);
+
+  } catch (error) {
+    console.log("ERRO COMPLETO:", error);
+    console.log("ERRO RESPONSE:", error?.response);
+    console.log("STATUS:", error?.response?.status);
+    console.log("DATA:", error?.response?.data);
+    console.log("TEST CASES", data.test_cases);
+    console.log("DATA DA API COMPLETA:", data);
+    setError('Chave inválida ou validação não encontrada');
+  } finally {
+    setIsValidating(false);
+  }
+
+};
 
   return (
     <div className="min-h-screen bg-gray-50">

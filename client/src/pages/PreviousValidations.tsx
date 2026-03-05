@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, ValidationSession } from '../App';
-import Header from './Header';
+import Header from '../components/Header';
 import { ArrowLeft, Search, Eye, Filter, Download, FileText, Table as TableIcon } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
 

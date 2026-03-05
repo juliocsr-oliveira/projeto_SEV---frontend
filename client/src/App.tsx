@@ -1,23 +1,21 @@
 import { useState, useEffect } from 'react';
-import Login from './components/Login';
-import Home from './components/Home';
-import CreateValidation, { ValidationDraft } from './components/CreateValidation';
-import SystemSelection, { SelectedSystem } from './components/SystemSelection';
-import ValidationCreated from './components/ValidationCreated';
-import EnterKey from './components/EnterKey';
-import ValidationExecution from './components/ValidationExecution';
-import Finalization from './components/Finalization';
-import PreviousValidations from './components/PreviousValidations';
-import KnowledgeBase from './components/KnowledgeBase';
-import Settings from './components/Settings';
-import ValidationStructure from './components/ValidationStructure';
-import EditValidation from './components/EditValidation';
-import EditValidationFields, { ValidationField } from './components/EditValidationFields';
-import { auditLog } from './utils/auditLog';
-import { seedDemoLogs } from './utils/seedLogs';
+import Login from '@/pages/Login';
+import Home from '@/pages/Home';
+import CreateValidation, { ValidationDraft } from '@/pages/CreateValidation';
+import SystemSelection, { SelectedSystem } from '@/pages/SystemSelection';
+import ValidationCreated from '@/pages/ValidationCreated';
+import EnterKey from '@/pages/EnterKey';
+import ValidationExecution from '@/pages/ValidationExecution';
+import Finalization from '@/pages/Finalization';
+import PreviousValidations from '@/pages/PreviousValidations';
+import KnowledgeBase from '@/pages/KnowledgeBase';
+import Settings from '@/pages/Settings';
+import ValidationStructure from '@/pages/ValidationStructure';
+import EditValidation from '@/pages/EditValidation';
+import EditValidationFields, { ValidationField } from '@/pages/EditValidationFields';
+import { auditLog } from '@/utils/auditLog';
+import { seedDemoLogs } from '@/utils/seedLogs';
 import { useAuth } from '@/contexts/AuthContext';
-
-export type UserRole = 'testador' | 'auditor' | 'administrador';
 
 export interface User {
   name: string;
@@ -80,7 +78,6 @@ export default function App() {
   const [currentValidation, setCurrentValidation] = useState<ValidationSession | null>(null);
   const [validationDraft, setValidationDraft] = useState<ValidationDraft | null>(null);
   const [selectedSystems, setSelectedSystems] = useState<SelectedSystem[]>([]);
-  const [validationFields, setValidationFields] = useState<ValidationField[]>([]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -138,26 +135,54 @@ export default function App() {
   };
 
   // Nova função: Receber campos editados e finalizar criação
-  const handleValidationFieldsEdited = (fields: ValidationField[]) => {
-    if (!validationDraft) {
-      alert('Erro: Nenhuma validação em rascunho encontrada');
-      setCurrentScreen('home');
-      return;
-    }
+  const handleValidationFieldsEdited = (updatedDraft: ValidationDraft) => {
+    setValidationDraft(updatedDraft);
 
-    setValidationFields(fields);
-    
-    // Registrar log de finalização da criação
     auditLog.register({
-      user: user!.name,
-      department: user!.department,
-      action: 'CRIACAO_VALIDACAO',
-      details: `Validação configurada: ${validationDraft.name}, Sistemas: ${selectedSystems.length}, Campos: ${fields.length}, Status: AGUARDANDO_TESTE`
-    });
-    
-    // Ir para tela de validação criada (mostra chave)
+    user: user!.name,
+    department: user!.department,
+    action: 'CRIACAO_VALIDACAO',
+    details: `Validação configurada: ${updatedDraft.name}, Sistemas: ${selectedSystems.length}, Status: AGUARDANDO_TESTE`
+  });
+
     setCurrentScreen('validation-created');
   };
+
+  const handleUpdateItem = (updatedItem) => {
+  setCurrentValidation((prev) => {
+    if (!prev) return prev;
+
+    return {
+      ...prev,
+      items: prev.items.map((item) =>
+        item.id === updatedItem.id ? updatedItem : item
+      )
+    };
+  });
+};
+
+const handleFinalize = async () => {
+  if (!currentValidation) return;
+
+  try {
+    await api.post('/validation-sessions/finalize/', {
+      sessionId: currentValidation.id,
+      items: currentValidation.items
+    });
+
+    // muda status local
+    setCurrentValidation({
+      ...currentValidation,
+      status: 'finalizada'
+    });
+
+    // opcional: voltar pra home
+    setCurrentScreen('home');
+
+  } catch (error) {
+    console.error('Erro ao finalizar validação:', error);
+  }
+};
 
   // Função legada mantida para compatibilidade (EnterKey e outras telas antigas)
   const startValidation = (division: string, system: string, environment: string, gmud?: string) => {
@@ -187,16 +212,6 @@ export default function App() {
     });
     
     setCurrentValidation(newValidation);
-    setCurrentScreen('validation-execution');
-  };
-
-  const handleKeyValidation = (validation: ValidationSession) => {
-    // Gerar itens de validação
-    const validationWithItems = {
-      ...validation,
-      items: generateValidationItems()
-    };
-    setCurrentValidation(validationWithItems);
     setCurrentScreen('validation-execution');
   };
 
@@ -240,7 +255,6 @@ export default function App() {
     setCurrentValidation(null);
     setValidationDraft(null);
     setSelectedSystems([]);
-    setValidationFields([]);
     setCurrentScreen('home');
   };
 
@@ -338,16 +352,19 @@ export default function App() {
       {currentScreen === 'enter-key' && user && (
         <EnterKey
           onBack={returnToHome}
-          onValidKey={handleKeyValidation}
+          onSuccess={(validation) => {
+            setCurrentValidation(validation);
+            setCurrentScreen('validation-execution');
+          }}
           user={user}
         />
       )}
       {currentScreen === 'validation-execution' && currentValidation && user && (
         <ValidationExecution
           validation={currentValidation}
-          onUpdateItem={updateValidationItem}
-          onFinalize={finalizeValidation}
-          onBack={returnToHome}
+          onUpdateItem={handleUpdateItem}
+          onFinalize={handleFinalize}
+          onBack={() => setCurrentScreen('home')}
           user={user}
         />
       )}

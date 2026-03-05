@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { User } from '../App';
 import { ValidationDraft } from './CreateValidation';
-import Header from './Header';
+import Header from '../components/Header';
 import { ArrowLeft, Check, AlertCircle, Server } from 'lucide-react';
 import { 
   Breadcrumb, 
@@ -10,7 +10,7 @@ import {
   BreadcrumbList, 
   BreadcrumbPage, 
   BreadcrumbSeparator 
-} from './ui/breadcrumb';
+} from '../components/ui/breadcrumb';
 
 interface SystemSelectionProps {
   validationDraft: ValidationDraft;
@@ -32,7 +32,7 @@ const availableSystems = [
 const availableEnvironments = ['QA', 'HMG', 'PRÉ-PRODUÇÃO', 'PRD'];
 
 export default function SystemSelection({ validationDraft, onNext, onBack, user }: SystemSelectionProps) {
-  const [selectedSystems, setSelectedSystems] = useState<SelectedSystem[]>([]);
+  const [selectedSystems, setSelectedSystems] = useState<SelectedSystem []>([]);
   const [currentSystem, setCurrentSystem] = useState('');
   const [currentEnvironment, setCurrentEnvironment] = useState('');
   const [error, setError] = useState('');

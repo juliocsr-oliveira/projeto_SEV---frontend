@@ -1,97 +1,25 @@
-import { useAuth } from '@/contexts/AuthContext';
-import { Header } from '@/components/Header';
-import { useLocation } from 'wouter';
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { User } from '../App';
+import Header from '../components/Header';
+import { ArrowLeft, ChevronDown, ChevronUp, BookOpen, CheckSquare, Lightbulb, GitBranch } from 'lucide-react';
 
-interface KnowledgeSection {
-  id: string;
-  title: string;
-  content: string;
+interface KnowledgeBaseProps {
+  onBack: () => void;
+  user: User;
 }
 
-/**
- * Design: Página de FAQ com seções expansíveis
- * - Seções: Como testar, Exemplos de evidência, Boas práticas, Versionamento
- */
-export default function KnowledgeBase() {
-  const { isAuthenticated } = useAuth();
-  const [, navigate] = useLocation();
-  const [expandedSections, setExpandedSections] = useState<string[]>(['1']);
+interface Section {
+  id: string;
+  title: string;
+  icon: any;
+  content: {
+    subtitle: string;
+    items: string[];
+  }[];
+}
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/home');
-    }
-  }, [isAuthenticated, navigate]);
-
-  const sections: KnowledgeSection[] = [
-    {
-      id: '1',
-      title: 'Como Testar',
-      content: `
-        1. Acesse o sistema com suas credenciais
-        2. Clique em "Iniciar Validação" (para testadores, insira a chave fornecida pelo auditor)
-        3. Preencha cada item de validação com:
-           - Status: OK, Não se aplica ou Falhou
-           - Evidência: Faça upload de prints/imagens
-           - Comentário: Adicione observações se necessário
-        4. Finalize a validação após preencher todos os campos
-        5. Confirme com sua senha para assinatura digital
-        6. Exporte o relatório em PDF ou XLSX
-      `,
-    },
-    {
-      id: '2',
-      title: 'Exemplos de Evidência',
-      content: `
-        Exemplos de boas evidências:
-        
-        ✓ Screenshots claros do sistema testado
-        ✓ Imagens com data/hora visível
-        ✓ Prints mostrando mensagens de sucesso/erro
-        ✓ Comprovantes de ações realizadas
-        ✓ Logs de sistema relevantes
-        
-        Evite:
-        ✗ Imagens desfocadas ou cortadas
-        ✗ Prints sem contexto
-        ✗ Imagens muito grandes (>5MB)
-        ✗ Documentos em formatos não suportados
-      `,
-    },
-    {
-      id: '3',
-      title: 'Boas Práticas',
-      content: `
-        Para garantir validações de qualidade:
-        
-        1. Teste em ambiente apropriado (QA, HMG, PRD)
-        2. Siga o plano de testes fornecido pelo auditor
-        3. Documente cada passo com evidências
-        4. Adicione comentários explicativos quando necessário
-        5. Reporte bloqueios ou problemas imediatamente
-        6. Não modifique dados de produção durante testes
-        7. Mantenha a rastreabilidade de todas as ações
-      `,
-    },
-    {
-      id: '4',
-      title: 'Instruções de Versionamento',
-      content: `
-        Versionamento de Estruturas de Validação:
-        
-        - Cada estrutura de validação recebe um número de versão
-        - Alterações criam uma nova versão automaticamente
-        - Histórico completo é mantido para auditoria
-        - Versões anteriores podem ser consultadas
-        - GMUD (Gestão de Mudanças) é obrigatória para rastreabilidade
-        
-        Formato de Versão: v1.0, v1.1, v2.0, etc.
-        Cada validação registra a versão utilizada
-      `,
-    },
-  ];
+export default function KnowledgeBase({ onBack, user }: KnowledgeBaseProps) {
+  const [expandedSections, setExpandedSections] = useState<string[]>(['como-testar']);
 
   const toggleSection = (id: string) => {
     setExpandedSections(prev =>
@@ -99,68 +27,223 @@ export default function KnowledgeBase() {
     );
   };
 
+  const sections: Section[] = [
+    {
+      id: 'como-testar',
+      title: 'Como Testar',
+      icon: CheckSquare,
+      content: [
+        {
+          subtitle: 'Preparação do Ambiente',
+          items: [
+            'Verifique se o ambiente está disponível e acessível',
+            'Confirme que possui as credenciais necessárias',
+            'Certifique-se de que a versão do sistema está atualizada',
+            'Prepare os dados de teste necessários'
+          ]
+        },
+        {
+          subtitle: 'Execução dos Testes',
+          items: [
+            'Siga a ordem dos itens de validação apresentados',
+            'Execute cada funcionalidade conforme descrito',
+            'Anote qualquer comportamento inesperado',
+            'Capture evidências (screenshots) de cada teste'
+          ]
+        },
+        {
+          subtitle: 'Registro de Resultados',
+          items: [
+            'Marque o status correto para cada item (OK, Falhou, Não se aplica)',
+            'Anexe evidências para itens com status "OK" ou "Falhou"',
+            'Adicione comentários detalhados em casos de falha',
+            'Não deixe itens sem preenchimento'
+          ]
+        }
+      ]
+    },
+    {
+      id: 'exemplos-evidencia',
+      title: 'Exemplos de Evidência',
+      icon: BookOpen,
+      content: [
+        {
+          subtitle: 'Screenshots Válidos',
+          items: [
+            'Capture a tela completa mostrando o resultado da ação',
+            'Inclua data/hora visível no sistema quando possível',
+            'Mostre mensagens de sucesso ou erro claramente',
+            'Destaque elementos importantes com marcações'
+          ]
+        },
+        {
+          subtitle: 'O Que Evitar',
+          items: [
+            'Imagens cortadas ou com baixa resolução',
+            'Screenshots sem contexto suficiente',
+            'Evidências que não correspondem ao item testado',
+            'Fotos de tela ao invés de capturas de tela'
+          ]
+        },
+        {
+          subtitle: 'Organização',
+          items: [
+            'Nomeie os arquivos de forma descritiva',
+            'Mantenha a sequência lógica dos testes',
+            'Use formatos de imagem padrão (PNG, JPG)',
+            'Não envie arquivos muito grandes (máx. 5MB por imagem)'
+          ]
+        }
+      ]
+    },
+    {
+      id: 'boas-praticas',
+      title: 'Boas Práticas',
+      icon: Lightbulb,
+      content: [
+        {
+          subtitle: 'Planejamento',
+          items: [
+            'Reserve tempo adequado para executar a validação completa',
+            'Não execute validações em horários de pico do sistema',
+            'Revise a estrutura de validação antes de iniciar',
+            'Prepare um checklist adicional se necessário'
+          ]
+        },
+        {
+          subtitle: 'Durante a Validação',
+          items: [
+            'Não interrompa a validação após iniciada',
+            'Documente imediatamente qualquer problema encontrado',
+            'Tire dúvidas antes de marcar um item como "Falhou"',
+            'Mantenha comunicação com a equipe técnica se necessário'
+          ]
+        },
+        {
+          subtitle: 'Após a Validação',
+          items: [
+            'Revise todos os itens antes de finalizar',
+            'Verifique se todas as evidências foram anexadas',
+            'Salve uma cópia local dos documentos gerados',
+            'Comunique resultados críticos à equipe responsável'
+          ]
+        }
+      ]
+    },
+    {
+      id: 'versionamento',
+      title: 'Instruções de Versionamento',
+      icon: GitBranch,
+      content: [
+        {
+          subtitle: 'Estrutura de Versões',
+          items: [
+            'Formato: MAJOR.MINOR.PATCH (ex: 2.1.0)',
+            'MAJOR: Mudanças significativas na estrutura',
+            'MINOR: Adição de novos itens de validação',
+            'PATCH: Correções e ajustes em itens existentes'
+          ]
+        },
+        {
+          subtitle: 'Quando Criar Nova Versão',
+          items: [
+            'Ao adicionar ou remover itens de validação',
+            'Quando houver mudanças nos critérios de aceitação',
+            'Para refletir atualizações no sistema testado',
+            'Após revisão e aprovação de auditoria'
+          ]
+        },
+        {
+          subtitle: 'Rastreabilidade',
+          items: [
+            'Cada validação registra a versão da estrutura utilizada',
+            'Mantenha histórico de mudanças entre versões',
+            'Documente o motivo de cada mudança de versão',
+            'Comunique alterações a todos os validadores'
+          ]
+        }
+      ]
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-
-      <main className="container mx-auto px-4 py-8">
-        {/* Botão Voltar */}
+      <Header user={user} />
+      
+      <main className="container mx-auto px-6 py-8">
         <button
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-2 text-[#013171] hover:underline mb-8 font-medium"
+          onClick={onBack}
+          className="flex items-center gap-2 text-[#013171] hover:text-[#024a9f] mb-6 transition-colors"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ArrowLeft className="w-5 h-5" />
           Voltar
         </button>
 
-        {/* Título */}
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Base de Conhecimento
-        </h1>
-        <p className="text-gray-600 mb-8">
-          Encontre respostas e orientações para usar o sistema SEV
-        </p>
-
-        {/* Seções Expansíveis */}
-        <div className="max-w-3xl mx-auto space-y-4">
-          {sections.map((section) => (
-            <div
-              key={section.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden"
-            >
-              <button
-                onClick={() => toggleSection(section.id)}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-              >
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {section.title}
-                </h2>
-                <ChevronDown
-                  className={`w-5 h-5 text-gray-600 transition-transform ${
-                    expandedSections.includes(section.id) ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {expandedSections.includes(section.id) && (
-                <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-                  <div className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
-                    {section.content}
-                  </div>
-                </div>
-              )}
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden mb-6">
+            <div className="bg-[#013171] text-white p-6">
+              <h2 className="text-2xl font-bold mb-2">Base de Conhecimento</h2>
+              <p className="text-blue-200">Guias, instruções e boas práticas para validações</p>
             </div>
-          ))}
-        </div>
 
-        {/* Seção de Suporte */}
-        <div className="max-w-3xl mx-auto mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">
-            Precisa de Ajuda?
-          </h3>
-          <p className="text-blue-800">
-            Se não encontrou a resposta que procura, contacte o administrador do sistema ou consulte a documentação técnica.
-          </p>
+            <div className="p-6">
+              <p className="text-gray-600 mb-6">
+                Consulte esta base para obter orientações sobre como executar validações de forma eficaz e padronizada.
+              </p>
+
+              <div className="space-y-4">
+                {sections.map((section) => {
+                  const Icon = section.icon;
+                  const isExpanded = expandedSections.includes(section.id);
+                  
+                  return (
+                    <div key={section.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => toggleSection(section.id)}
+                        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className="w-5 h-5 text-[#013171]" />
+                          <h3 className="font-semibold text-gray-800">{section.title}</h3>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronUp className="w-5 h-5 text-gray-600" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-gray-600" />
+                        )}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="p-6 space-y-6">
+                          {section.content.map((subsection, index) => (
+                            <div key={index}>
+                              <h4 className="font-semibold text-gray-800 mb-3">
+                                {subsection.subtitle}
+                              </h4>
+                              <ul className="space-y-2">
+                                {subsection.items.map((item, itemIndex) => (
+                                  <li key={itemIndex} className="flex items-start gap-2 text-sm text-gray-700">
+                                    <span className="text-[#013171] mt-1">•</span>
+                                    <span>{item}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-gray-700">
+                  <strong>Dúvidas?</strong> Entre em contato com a equipe de Qualidade ou Auditoria para esclarecimentos adicionais.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>

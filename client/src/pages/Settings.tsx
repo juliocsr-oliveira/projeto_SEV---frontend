@@ -1,128 +1,322 @@
-import { useAuth } from '@/contexts/AuthContext';
-import { Header } from '@/components/Header';
-import { Button } from '@/components/ui/button';
-import { useLocation } from 'wouter';
-import { useState, useEffect } from 'react';
-import { ChevronLeft, Settings as SettingsIcon, Users, FileText, BarChart3 } from 'lucide-react';
+import { useState } from 'react';
+import { User } from '@/App';
+import Header from '@/components/Header';
+import { ArrowLeft, Database, Users, BookOpen, Plus, Edit2, Trash2, Save, FileText } from 'lucide-react';
+import { auditLog } from '@/utils/auditLog';
+import AuditLogsModal from '@/components/AuditLogsModal';
 
-/**
- * Design: Grid de configurações
- * - Cards para: Gerenciar Estrutura, Gerenciar Usuários, Base de Conhecimento
- * - Apenas para Admin e Auditor
- */
-export default function Settings() {
-  const { user, isAuthenticated } = useAuth();
-  const [, navigate] = useLocation();
+interface SettingsProps {
+  onBack: () => void;
+  user: User;
+}
 
-  useEffect(() => {
-    if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'auditor')) {
-      navigate('/home');
+export default function Settings({ onBack, user }: SettingsProps) {
+  const [activeTab, setActiveTab] = useState<'structure' | 'users' | 'knowledge'>('structure');
+  const [structureVersion, setStructureVersion] = useState('2.1.0');
+  const [showNewItemForm, setShowNewItemForm] = useState(false);
+  const [newItemText, setNewItemText] = useState('');
+  const [showLogsModal, setShowLogsModal] = useState(false);
+
+  const isAdmin = user.role === 'ADMIN';
+
+  const menuItems = [
+    {
+      id: 'structure' as const,
+      title: 'Gerenciar Estrutura de Validação',
+      description: 'Adicionar, editar ou remover itens de validação',
+      icon: Database,
+      show: true
+    },
+    {
+      id: 'users' as const,
+      title: 'Gerenciar Usuários',
+      description: 'Controle de acessos e permissões',
+      icon: Users,
+      show: isAdmin
+    },
+    {
+      id: 'knowledge' as const,
+      title: 'Base de Conhecimento',
+      description: 'Editar conteúdo da base de conhecimento',
+      icon: BookOpen,
+      show: true
     }
-  }, [isAuthenticated, user, navigate]);
+  ];
 
-  const handleNavigate = (path: string) => {
-    navigate(path);
+  const [validationItems, setValidationItems] = useState([
+    { id: '1', text: 'Verificar autenticação de usuários', active: true },
+    { id: '2', text: 'Validar fluxo de criação de registros', active: true },
+    { id: '3', text: 'Testar edição de dados existentes', active: true },
+    { id: '4', text: 'Confirmar exclusão de registros', active: true },
+    { id: '5', text: 'Validar permissões de acesso', active: true },
+  ]);
+
+useEffect(() => {
+  api.get("/users/")
+    .then(res => setUsers(res.data))
+    .catch(err => console.error(err));
+}, []);
+
+  const handleAddItem = () => {
+    if (newItemText.trim()) {
+      setValidationItems([
+        ...validationItems,
+        { id: Date.now().toString(), text: newItemText, active: true }
+      ]);
+      setNewItemText('');
+      setShowNewItemForm(false);
+    }
   };
 
-  const settingsOptions = [
-    {
-      id: 'structure',
-      title: 'Gerenciar Estrutura de Validação',
-      description: 'Criar, editar e versionar estruturas de validação',
-      icon: FileText,
-      onClick: () => handleNavigate('/edit-structure'),
-      visible: true,
-    },
-    {
-      id: 'users',
-      title: 'Gerenciar Utilizadores',
-      description: 'Criar, editar e desativar utilizadores do sistema',
-      icon: Users,
-      onClick: () => handleNavigate('/manage-users'),
-      visible: user?.role === 'admin',
-    },
-    {
-      id: 'logs',
-      title: 'Extrair Logs',
-      description: 'Visualizar e exportar logs de auditoria do sistema',
-      icon: BarChart3,
-      onClick: () => handleNavigate('/logs'),
-      visible: user?.role === 'admin',
-    },
-    {
-      id: 'knowledge',
-      title: 'Base de Conhecimento',
-      description: 'Gerenciar conteúdo da base de conhecimento',
-      icon: SettingsIcon,
-      onClick: () => handleNavigate('/knowledge-base'),
-      visible: true,
-    },
-  ];
+  const handleDeleteItem = (id: string) => {
+    setValidationItems(validationItems.filter(item => item.id !== id));
+  };
+
+  const handleSaveStructure = () => {
+    // Registrar log de alteração de estrutura
+    auditLog.register({
+      user: user.name,
+      department: user.department,
+      action: 'ALTERACAO_ESTRUTURA',
+      details: `Nova versão: ${structureVersion}, Total de itens: ${validationItems.length}`
+    });
+    
+    alert(`Estrutura salva com sucesso!\nNova versão: ${structureVersion}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-
-      <main className="container mx-auto px-4 py-8">
-        {/* Botão Voltar */}
+      <Header user={user} />
+      
+      <main className="container mx-auto px-6 py-8">
         <button
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-2 text-[#013171] hover:underline mb-8 font-medium"
+          onClick={onBack}
+          className="flex items-center gap-2 text-[#013171] hover:text-[#024a9f] mb-6 transition-colors"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ArrowLeft className="w-5 h-5" />
           Voltar
         </button>
 
-        {/* Título */}
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Configurações
-        </h1>
-        <p className="text-gray-600 mb-8">
-          Gerencie as configurações do sistema SEV
-        </p>
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+          <div className="bg-[#013171] text-white p-6">
+            <h2 className="text-2xl font-bold mb-2">Configurações</h2>
+            <p className="text-blue-200">Gerenciamento de estruturas, usuários e conteúdo</p>
+          </div>
 
-        {/* Grid de Opções */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-          {settingsOptions.map((option) => {
-            if (!option.visible) return null;
+          <div className="flex flex-col md:flex-row">
+            {/* Menu lateral */}
+            <div className="w-full md:w-64 bg-gray-50 border-r border-gray-200 p-4">
+              <nav className="space-y-2">
+                {menuItems.filter(item => item.show).map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full text-left p-3 rounded-lg transition-colors ${
+                        activeTab === item.id
+                          ? 'bg-[#013171] text-white'
+                          : 'hover:bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-5 h-5" />
+                        <div>
+                          <p className="font-medium text-sm">{item.title}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
 
-            const Icon = option.icon;
-            return (
-              <button
-                key={option.id}
-                onClick={option.onClick}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow text-left"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="bg-[#013171] text-white p-3 rounded-lg">
-                    <Icon className="w-6 h-6" />
+            {/* Conteúdo */}
+            <div className="flex-1 p-6">
+              {activeTab === 'structure' && (
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800">Estrutura de Validação</h3>
+                      <p className="text-sm text-gray-600 mt-1">Versão atual: {structureVersion}</p>
+                    </div>
+                    <button
+                      onClick={() => setShowNewItemForm(true)}
+                      className="flex items-center gap-2 bg-[#013171] text-white px-4 py-2 rounded-md hover:bg-[#024a9f] transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Adicionar Item
+                    </button>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      {option.title}
-                    </h3>
+
+                  <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-gray-700">
+                      <strong>Atenção:</strong> Alterações na estrutura criarão uma nova versão. 
+                      Validações em andamento usarão a versão anterior.
+                    </p>
+                  </div>
+
+                  {showNewItemForm && (
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="font-semibold mb-3">Novo Item de Validação</h4>
+                      <input
+                        type="text"
+                        value={newItemText}
+                        onChange={(e) => setNewItemText(e.target.value)}
+                        placeholder="Digite o texto do item de validação"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md mb-3 focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleAddItem}
+                          className="bg-[#013171] text-white px-4 py-2 rounded-md hover:bg-[#024a9f] transition-colors"
+                        >
+                          Adicionar
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowNewItemForm(false);
+                            setNewItemText('');
+                          }}
+                          className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2 mb-6">
+                    {validationItems.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <span className="text-gray-500 font-mono text-sm">{index + 1}</span>
+                          <p className="text-gray-800">{item.text}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button className="p-2 text-[#013171] hover:bg-blue-100 rounded transition-colors">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="p-2 text-red-600 hover:bg-red-100 rounded transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-4 pt-6 border-t border-gray-200">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nova Versão
+                      </label>
+                      <input
+                        type="text"
+                        value={structureVersion}
+                        onChange={(e) => setStructureVersion(e.target.value)}
+                        placeholder="Ex: 2.2.0"
+                        className="w-48 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSaveStructure}
+                      className="mt-6 flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      <Save className="w-5 h-5" />
+                      Salvar Estrutura
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'users' && isAdmin && (
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-gray-800">Gerenciar Usuários</h3>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => setShowLogsModal(true)}
+                        className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Extrair Logs
+                      </button>
+                      <button className="flex items-center gap-2 bg-[#013171] text-white px-4 py-2 rounded-md hover:bg-[#024a9f] transition-colors">
+                        <Plus className="w-4 h-4" />
+                        Adicionar Usuário
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-100 border-b border-gray-200">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Nome</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Perfil</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Setor</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mockUsers.map((user, index) => (
+                          <tr key={user.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="px-4 py-3 text-sm">{user.name}</td>
+                            <td className="px-4 py-3 text-sm">{user.email}</td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs capitalize">
+                                {user.role}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm">{user.department}</td>
+                            <td className="px-4 py-3 text-sm">
+                              <div className="flex gap-2">
+                                <button className="p-1 text-[#013171] hover:bg-blue-100 rounded">
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button className="p-1 text-red-600 hover:bg-red-100 rounded">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'knowledge' && (
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-4">Base de Conhecimento</h3>
+                  <p className="text-gray-600 mb-6">
+                    Edite o conteúdo das seções da base de conhecimento.
+                  </p>
+                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <p className="text-sm text-gray-600">
-                      {option.description}
+                      Funcionalidade de edição em desenvolvimento.
+                      Entre em contato com o administrador do sistema para alterações no conteúdo.
                     </p>
                   </div>
                 </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Informação do Perfil */}
-        <div className="max-w-4xl mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">
-            Seu Perfil
-          </h3>
-          <div className="text-blue-800">
-            <p><strong>Nome:</strong> {user?.name}</p>
-            <p><strong>Email:</strong> {user?.email}</p>
-            <p><strong>Função:</strong> <span className="capitalize">{user?.role}</span></p>
-            <p><strong>Setor:</strong> {user?.sector}</p>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Modal de Logs de Auditoria */}
+        <AuditLogsModal
+          show={showLogsModal}
+          onClose={() => setShowLogsModal(false)}
+        />
       </main>
     </div>
   );

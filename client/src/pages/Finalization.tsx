@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { User, ValidationSession } from '../App';
-import Header from './Header';
+import Header from '../components/Header';
 import { CheckCircle, Download, FileText, Table } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
 

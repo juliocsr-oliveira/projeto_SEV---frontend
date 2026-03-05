@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User } from '../App';
-import Header from './Header';
+import Header from '../components/Header';
 import { ArrowLeft, Plus, Trash2, Save, Check } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
 

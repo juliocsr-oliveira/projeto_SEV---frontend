@@ -1,4 +1,3 @@
-// services/api.ts
 import axios from "axios";
 
 const api = axios.create({
@@ -8,9 +7,10 @@ const api = axios.create({
   },
 });
 
+// Interceptor para adicionar token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
-  if (token) {
+  if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
