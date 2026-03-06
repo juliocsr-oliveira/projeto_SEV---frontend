@@ -3,59 +3,66 @@ import { useState } from 'react';
 import { User, ValidationSession } from '@/App';
 import Header from '@/components/Header';
 import { ArrowLeft, Key, AlertCircle } from 'lucide-react';
-import { auditLog } from '@/utils/auditLog';
 
 interface EnterKeyProps {
   onBack: () => void;
-  onValidKey: (validation: ValidationSession) => void;
+  onSuccess: (validationSession: ValidationSession) => void;
   user: User;
 }
 
-export default function EnterKey({ onBack, onValidKey, user }: EnterKeyProps) {
+export default function EnterKey({ onBack, onSuccess, user }: EnterKeyProps) {
   const [accessKey, setAccessKey] = useState('');
   const [error, setError] = useState('');
   const [isValidating, setIsValidating] = useState(false);
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError('');
-  setIsValidating(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsValidating(true);
 
-  try {
-    // 1️⃣ Buscar plano pela key
-    const planResponse = await api.get(
-      `/test-plans/by-key/${accessKey}/`
-    );
+try {
+  const response = await api.get(`/test-plans/by-key/${accessKey}/`);
 
-    const testPlan = planResponse.data;
+const data = response.data;
 
-    // 2️⃣ Criar sessão real no backend
-    const sessionResponse = await api.post('/validation-sessions/', {
-      test_plan: testPlan.id
-    });
+const validationSession: ValidationSession = {
+  id: data.id,
+  user: user?.name || '',
+  department: user?.department || '',
+  division: data.division || '',
+  system: data.system || '',
+  environment: data.environment || '',
+  startTime: new Date(),
+  items: (data.test_cases || []).map((tc: any) => ({
+    id: tc.id,
+    item: tc.description,
+    status: '',
+    evidence: null,
+    evidencePreview: null,
+    comment: ''
+  })),
+  status: 'em_andamento',
+  structureVersion: '2.1.0',
+  validationName: data.name,
+  validationType: data.validation_type,
+  responsible: data.responsible_name,
+  validationStatus: data.status
+};
 
-    const session = sessionResponse.data;
+  onSuccess(validationSession);
 
-    // 3️⃣ Montar objeto que o front espera
-    const validationSession = {
-      ...session,
-      testPlan: testPlan,
-      testCases: testPlan.test_cases || [],
-    };
-
-    onValidKey(validationSession);
-
-  } catch (error: any) {
-    if (error.response?.status === 404) {
-      setError('Chave inválida ou validação não disponível.');
-    } else if (error.response?.data?.detail) {
-      setError(error.response.data.detail);
-    } else {
-      setError('Erro ao iniciar validação.');
-    }
+  } catch (error) {
+    console.log("ERRO COMPLETO:", error);
+    console.log("ERRO RESPONSE:", error?.response);
+    console.log("STATUS:", error?.response?.status);
+    console.log("DATA:", error?.response?.data);
+    console.log("TEST CASES", data.test_cases);
+    console.log("DATA DA API COMPLETA:", data);
+    setError('Chave inválida ou validação não encontrada');
   } finally {
     setIsValidating(false);
   }
+
 };
 
   return (

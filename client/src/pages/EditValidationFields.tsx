@@ -1,17 +1,23 @@
-import { useEffect, useState } from 'react';
-import { User } from '../App';
+import { useState, useEffect } from 'react';
+import { User } from '@/App';
 import { ValidationDraft } from './CreateValidation';
 import { SelectedSystem } from './SystemSelection';
-import api from '@/services/api'
-import Header from '../components/Header';
+import api from '@/services/api';
+import Header from '@/components/Header';
 import { ArrowLeft, Plus, Trash2, AlertCircle } from 'lucide-react';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '../components/ui/breadcrumb';
+import { 
+  Breadcrumb, 
+  BreadcrumbItem, 
+  BreadcrumbLink, 
+  BreadcrumbList, 
+  BreadcrumbPage, 
+  BreadcrumbSeparator 
+} from '../components/ui/breadcrumb';
 
 export interface ValidationField {
   id: string;
-  name: string;
   description: string;
-  order: number;
+  order_index: number;
 }
 
 export default function EditValidationFields({ 
@@ -23,47 +29,49 @@ export default function EditValidationFields({
 }: EditValidationFieldsProps) {
   const [fields, setFields] = useState<ValidationField[]>([]);
   const [newFieldName, setNewFieldName] = useState('');
-  const [newFieldDescription, setNewFieldDescription] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-  fetchFields();
-  }, []);
+  if (validationDraft?.id) {
+    fetchFields();
+  }
+}, [validationDraft.id]);
 
   const fetchFields = async () => {
-    try {
-      const response = await api.get("/test-case/", {
-        params: {
-          test_plan: validationDraft.id,
-          active: true
-        }
-      });
+  try {
+
+    const response = await api.get("/test-case/", {
+      params: {
+        test_plan: validationDraft.id,
+        active: true
+      }
+    });
+
     const data = response.data;
 
-      if (Array.isArray(data)){
-        setFields(data);
-      } else {
-        setFields(data.results || []);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar test cases", error);
-    }  
-  };
+    if (Array.isArray(data)) {
+      setFields(data);
+    } else {
+      setFields(data.results || []);
+    }
 
-  const handleAddField = async () => {
+  } catch (error) {
+    console.error("Erro ao buscar test cases", error);
+  }
+};
+
+const handleAddField = async () => {
   try {
     await api.post("/test-case/", {
-      name: newFieldName,
-      description: newFieldDescription,
+      description: newFieldName,
       test_plan: validationDraft.id,
       active: true,
       order_index: fields.length + 1
     });
 
     setNewFieldName("");
-    setNewFieldDescription("");
 
-    fetchFields(); // recarrega lista
+    fetchFields();
 
   } catch (error) {
     console.error("Erro ao adicionar campo:", error);
@@ -72,62 +80,58 @@ export default function EditValidationFields({
 
 const handleRemoveField = async (id: string) => {
   try {
-    await api.patch(`/test-case/${id}/`, {
-      active: false
-    });
+    await api.delete(`/test-case/${id}/`);
 
-    fetchFields();
-  } catch (err) {
-    console.error(err);
+    setFields(fields.filter(field => field.id !== id));
+
+    fetchFields(); // opcional, mas mantém sincronizado
+
+  } catch (error) {
+    console.error("Erro ao remover campo:", error);
   }
 };
 
-  const handleUpdateField = (id: string, updates: Partial<ValidationField>) => {
-    setFields(fields.map(f => f.id === id ? { ...f, ...updates } : f));
-  };
-
-const handleMoveUp = async (index: number) => {
+const handleMoveUp = (index: number) => {
   if (index === 0) return;
 
-  const current = fields[index];
-  const above = fields[index - 1];
+  const newFields = [...fields];
 
-  await api.patch(`/test-case/${current.id}/`, {
-    order_index: above.order_index
-  });
+  [newFields[index - 1], newFields[index]] = 
+  [newFields[index], newFields[index - 1]];
 
-  await api.patch(`/test-case/${above.id}/`, {
-    order_index: current.order_index
-  });
-
-  fetchFields();
+  setFields(newFields);
 };
 
-const handleMoveDown = async (index: number) => {
+const handleMoveDown = (index: number) => {
   if (index === fields.length - 1) return;
 
-  const current = fields[index];
-  const above = fields[index + 1];
+  const newFields = [...fields];
 
-  await api.patch(`/test-case/${current.id}/`, {
-    order_index: below.order_index
-  });
+  [newFields[index], newFields[index + 1]] = 
+  [newFields[index + 1], newFields[index]];
 
-  await api.patch(`/test-case/${below.id}/`, {
-    order_index: current.order_index
-  });
-
-  fetchFields();
+  setFields(newFields);
 };
 
-  const handleSubmit = () => {
-    if (fields.length === 0) {
-      setError('Adicione pelo menos um campo de validação');
-      return;
-    }
+const handleSubmit = async () => {
 
-    onNext();
-  };
+  if (fields.length === 0) {
+    setError("Adicione pelo menos um campo de validação");
+    return;
+  }
+
+  try {
+
+    onNext({
+      ...validationDraft
+    });
+
+  } catch (error) {
+    console.error("Erro ao continuar:", error);
+    setError("Erro ao continuar.");
+  }
+
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -229,9 +233,8 @@ const handleMoveDown = async (index: number) => {
                           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#013171] text-white text-xs font-semibold">
                             {index + 1}
                           </span>
-                          <h3 className="font-medium text-gray-900">{field.name}</h3>
+                          <h3 className="font-medium text-gray-900">{field.description}</h3>
                         </div>
-                        <p className="text-sm text-gray-600">{field.description}</p>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -282,20 +285,6 @@ const handleMoveDown = async (index: number) => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#013171] focus:border-transparent"
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Descrição
-                </label>
-                <textarea
-                  value={newFieldDescription}
-                  onChange={(e) => setNewFieldDescription(e.target.value)}
-                  placeholder="Descreva o que deve ser validado"
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#013171] focus:border-transparent resize-none"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 </div>
               <button

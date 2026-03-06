@@ -101,6 +101,9 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     if (error.response?.data) {
       console.log("Erro backend:", error.response.data);
+      console.log("STATUS:", error.response?.status);
+      console.log("DATA:", JSON.stringify(error.response?.data, null,2));
+      console.log("ERRO COMPLETO:", error.response);
     }
 
     alert("Erro ao criar validação. Verifique os dados.");

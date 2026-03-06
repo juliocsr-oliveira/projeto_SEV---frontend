@@ -78,7 +78,6 @@ export default function App() {
   const [currentValidation, setCurrentValidation] = useState<ValidationSession | null>(null);
   const [validationDraft, setValidationDraft] = useState<ValidationDraft | null>(null);
   const [selectedSystems, setSelectedSystems] = useState<SelectedSystem[]>([]);
-  const [validationFields, setValidationFields] = useState<ValidationField[]>([]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -136,26 +135,54 @@ export default function App() {
   };
 
   // Nova função: Receber campos editados e finalizar criação
-  const handleValidationFieldsEdited = (fields: ValidationField[]) => {
-    if (!validationDraft) {
-      alert('Erro: Nenhuma validação em rascunho encontrada');
-      setCurrentScreen('home');
-      return;
-    }
+  const handleValidationFieldsEdited = (updatedDraft: ValidationDraft) => {
+    setValidationDraft(updatedDraft);
 
-    setValidationFields(fields);
-    
-    // Registrar log de finalização da criação
     auditLog.register({
-      user: user!.name,
-      department: user!.department,
-      action: 'CRIACAO_VALIDACAO',
-      details: `Validação configurada: ${validationDraft.name}, Sistemas: ${selectedSystems.length}, Campos: ${fields.length}, Status: AGUARDANDO_TESTE`
-    });
-    
-    // Ir para tela de validação criada (mostra chave)
+    user: user!.name,
+    department: user!.department,
+    action: 'CRIACAO_VALIDACAO',
+    details: `Validação configurada: ${updatedDraft.name}, Sistemas: ${selectedSystems.length}, Status: AGUARDANDO_TESTE`
+  });
+
     setCurrentScreen('validation-created');
   };
+
+const handleUpdateItem = (itemId: string, updates: Partial<ValidationItem>) => {
+  setCurrentValidation((prev) => {
+    if (!prev) return prev;
+
+    return {
+      ...prev,
+      items: prev.items.map((item) =>
+        item.id === itemId ? { ...item, ...updates } : item
+      )
+    };
+  });
+};
+
+const handleFinalize = async () => {
+  if (!currentValidation) return;
+
+  try {
+    await api.post('/validation-sessions/finalize/', {
+      sessionId: currentValidation.id,
+      items: currentValidation.items
+    });
+
+    // muda status local
+    setCurrentValidation({
+      ...currentValidation,
+      status: 'finalizada'
+    });
+
+    // opcional: voltar pra home
+    setCurrentScreen('home');
+
+  } catch (error) {
+    console.error('Erro ao finalizar validação:', error);
+  }
+};
 
   // Função legada mantida para compatibilidade (EnterKey e outras telas antigas)
   const startValidation = (division: string, system: string, environment: string, gmud?: string) => {
@@ -185,16 +212,6 @@ export default function App() {
     });
     
     setCurrentValidation(newValidation);
-    setCurrentScreen('validation-execution');
-  };
-
-  const handleKeyValidation = (validation: ValidationSession) => {
-    // Gerar itens de validação
-    const validationWithItems = {
-      ...validation,
-      items: generateValidationItems()
-    };
-    setCurrentValidation(validationWithItems);
     setCurrentScreen('validation-execution');
   };
 
@@ -238,7 +255,6 @@ export default function App() {
     setCurrentValidation(null);
     setValidationDraft(null);
     setSelectedSystems([]);
-    setValidationFields([]);
     setCurrentScreen('home');
   };
 
@@ -336,16 +352,19 @@ export default function App() {
       {currentScreen === 'enter-key' && user && (
         <EnterKey
           onBack={returnToHome}
-          onValidKey={handleKeyValidation}
+          onSuccess={(validation) => {
+            setCurrentValidation(validation);
+            setCurrentScreen('validation-execution');
+          }}
           user={user}
         />
       )}
       {currentScreen === 'validation-execution' && currentValidation && user && (
         <ValidationExecution
           validation={currentValidation}
-          onUpdateItem={updateValidationItem}
-          onFinalize={finalizeValidation}
-          onBack={returnToHome}
+          onUpdateItem={handleUpdateItem}
+          onFinalize={handleFinalize}
+          onBack={() => setCurrentScreen('home')}
           user={user}
         />
       )}

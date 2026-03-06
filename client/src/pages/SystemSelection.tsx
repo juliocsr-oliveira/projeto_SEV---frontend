@@ -32,7 +32,7 @@ const availableSystems = [
 const availableEnvironments = ['QA', 'HMG', 'PRÉ-PRODUÇÃO', 'PRD'];
 
 export default function SystemSelection({ validationDraft, onNext, onBack, user }: SystemSelectionProps) {
-  const [selectedSystems, setSelectedSystems] = useState<SelectedSystem[]>([]);
+  const [selectedSystems, setSelectedSystems] = useState<SelectedSystem []>([]);
   const [currentSystem, setCurrentSystem] = useState('');
   const [currentEnvironment, setCurrentEnvironment] = useState('');
   const [error, setError] = useState('');
