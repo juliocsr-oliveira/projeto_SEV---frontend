@@ -39,7 +39,7 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
       environment: validation.environment,
       validationId: validation.id,
       resultingStatus: status,
-      details: `Item: ${validation.items.find(i => i.id === itemId)?.item}`
+      details: `Item: ${validation.items.find(i => i.id === itemId)?.description}`
     });
   };
 
@@ -59,7 +59,7 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
         system: validation.system,
         environment: validation.environment,
         validationId: validation.id,
-        details: `Item: ${validation.items.find(i => i.id === itemId)?.item}, Arquivo: ${file.name}`
+        details: `Item: ${validation.items.find(i => i.id === itemId)?.description}, Arquivo: ${file.name}`
       });
     };
     reader.readAsDataURL(file);
@@ -77,14 +77,14 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
         system: validation.system,
         environment: validation.environment,
         validationId: validation.id,
-        details: `Item: ${validation.items.find(i => i.id === itemId)?.item}`
+        details: `Item: ${validation.items.find(i => i.id === itemId)?.description}`
       });
     }
   };
 
   // Verificar se todos os itens estão preenchidos
   const allItemsComplete = validation.items.every(item => item.status !== '');
-  const hasAtLeastOneEvidence = validation.items.some(item => item.evidence !== null);
+  const hasAtLeastOneEvidence = validation.items.some(item => item.evidence);
   const canFinalize = allItemsComplete && hasAtLeastOneEvidence;
 
   const totalItems = validation.items.length;
@@ -160,7 +160,7 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-blue-200">Sistema:</span>
-                <p className="font-medium">{validation.system}</p>
+                <p className="font-medium">{validation.system || '-'}</p>
               </div>
               <div>
                 <span className="text-blue-200">Ambiente:</span>
@@ -213,7 +213,7 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
                 {validation.items.map((item, index) => (
                   <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="px-6 py-4 border-b border-gray-200">
-                      <p className="text-sm text-gray-800">{item.item}</p>
+                      <p className="text-sm text-gray-800">{item.item || item.item}</p>
                     </td>
                     <td className="px-6 py-4 border-b border-gray-200">
                       <select
@@ -279,7 +279,7 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
                     <td className="px-6 py-4 border-b border-gray-200">
                       <input
                         type="text"
-                        value={item.comment}
+                        value={item.comment || ''}
                         onChange={(e) => handleCommentChange(item.id, e.target.value)}
                         placeholder="Adicionar comentário..."
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"

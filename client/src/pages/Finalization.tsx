@@ -3,6 +3,7 @@ import { User, ValidationSession } from '../App';
 import Header from '../components/Header';
 import { CheckCircle, Download, FileText, Table } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
+import api from '@/services/api';
 
 interface FinalizationProps {
   validation: ValidationSession;
@@ -18,39 +19,25 @@ export default function Finalization({ validation, onComplete, user }: Finalizat
 
   const isAuditorOrAdmin = user.role === 'auditor' || user.role === 'administrador';
 
-  const handleFinalize = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validar confirmação do auditor se necessário
-    if (isAuditorOrAdmin && !auditorConfirmation) {
-      alert('Por favor, confirme que o teste foi realizado e as evidências foram conferidas.');
-      return;
-    }
-    
-    setIsExporting(true);
-    
-    // Registrar log de exportação
-    auditLog.register({
-      user: user.name,
-      department: user.department,
-      action: 'EXPORTACAO_RELATORIO',
-      system: validation.system,
-      environment: validation.environment,
-      validationId: validation.id,
-      details: `Exportação de PDF e Planilha`
+const handleFinalize = async (e: React.FormEvent) => {
+
+  e.preventDefault();
+
+  try {
+
+    await api.patch(`/validation-sessions/${validation.sessionId}/`, {
+      status: "APPROVED",
+      finished_at: new Date().toISOString()
     });
-    
-    // Simular exportação
-    setTimeout(() => {
-      setIsExporting(false);
-      setExportComplete(true);
-      
-      // Voltar para home após 2 segundos
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
-    }, 1500);
-  };
+
+    setExportComplete(true);
+
+  } catch (error) {
+
+    console.error("Erro ao finalizar validação:", error);
+
+  }
+};
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString('pt-BR', {

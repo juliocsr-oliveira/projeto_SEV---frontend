@@ -16,7 +16,6 @@ import {
 
 export interface ValidationField {
   id: string;
-  name: string;
   description: string;
   order_index: number;
 }
@@ -30,8 +29,13 @@ export default function EditValidationFields({
 }: EditValidationFieldsProps) {
   const [fields, setFields] = useState<ValidationField[]>([]);
   const [newFieldName, setNewFieldName] = useState('');
-  const [newFieldDescription, setNewFieldDescription] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+  if (validationDraft?.id) {
+    fetchFields();
+  }
+}, [validationDraft.id]);
 
   const fetchFields = async () => {
   try {
@@ -59,15 +63,13 @@ export default function EditValidationFields({
 const handleAddField = async () => {
   try {
     await api.post("/test-case/", {
-      name: newFieldName,
-      description: newFieldDescription,
+      description: newFieldName,
       test_plan: validationDraft.id,
       active: true,
       order_index: fields.length + 1
     });
 
     setNewFieldName("");
-    setNewFieldDescription("");
 
     fetchFields();
 
@@ -120,35 +122,13 @@ const handleSubmit = async () => {
 
   try {
 
-    // 1 cria testplan
-    const createdPlan = {
-      id: validationDraft.id,
-      access_key: validationDraft.accessKey
-    };
-
-
-    // 2 cria os campos
-      await Promise.all (
-        fields.map(field =>
-          api.post("/test-case/", {
-            name: field.name,
-            description: field.description,
-            test_plan: createdPlan.id,
-            order_index: field.order_index
-          })
-        )
-      );
-
-    // 3 avança fluxo
     onNext({
-      ...validationDraft,
-      id: createdPlan.id,
-      accessKey: createdPlan.access_key
+      ...validationDraft
     });
 
   } catch (error) {
-    console.error("Erro ao criar validação:", error);
-    setError("Erro ao criar validação. Tente novamente.");
+    console.error("Erro ao continuar:", error);
+    setError("Erro ao continuar.");
   }
 
 };
@@ -253,9 +233,8 @@ const handleSubmit = async () => {
                           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#013171] text-white text-xs font-semibold">
                             {index + 1}
                           </span>
-                          <h3 className="font-medium text-gray-900">{field.name}</h3>
+                          <h3 className="font-medium text-gray-900">{field.description}</h3>
                         </div>
-                        <p className="text-sm text-gray-600">{field.description}</p>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -306,20 +285,6 @@ const handleSubmit = async () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#013171] focus:border-transparent"
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Descrição
-                </label>
-                <textarea
-                  value={newFieldDescription}
-                  onChange={(e) => setNewFieldDescription(e.target.value)}
-                  placeholder="Descreva o que deve ser validado"
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#013171] focus:border-transparent resize-none"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 </div>
               <button

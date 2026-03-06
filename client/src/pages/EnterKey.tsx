@@ -3,8 +3,6 @@ import { useState } from 'react';
 import { User, ValidationSession } from '@/App';
 import Header from '@/components/Header';
 import { ArrowLeft, Key, AlertCircle } from 'lucide-react';
-import { auditLog } from '@/utils/auditLog';
-import { data } from 'react-router-dom';
 
 interface EnterKeyProps {
   onBack: () => void;
@@ -22,33 +20,62 @@ export default function EnterKey({ onBack, onSuccess, user }: EnterKeyProps) {
     setError('');
     setIsValidating(true);
 
-try {
-  const response = await api.get(`/test-plans/by-key/${accessKey}/`);
+    try {
 
-const data = response.data;
+      // 1️⃣ Buscar Test Plan pela key
+      const planResponse = await api.get(`/test-plans/by-key/${accessKey}/`);
+      const plan = planResponse.data;
+
+      let session;
+
+      try {
+
+        // 2️⃣ Tentar criar nova sessão
+        const sessionResponse = await api.post("/validation-sessions/", {
+          test_plan: plan.id,
+          started_by: user.id
+        });
+
+        session = sessionResponse.data;
+
+      } catch (error: any) {
+
+        // 3️⃣ Se já existir sessão ativa, recuperar ela
+        if (error.response?.status === 400 || error.response?.status === 409) {
+
+          const existingSession = await api.get(
+            `/validation-sessions/?test_plan=${plan.id}&status=IN_PROGRESS`
+          );
+
+          session = existingSession.data[0];
+
+        } else {
+          throw error;
+        }
+      }
 
 const validationSession: ValidationSession = {
-  id: data.id,
+  id: plan.id,
+  sessionId: session.id,
   user: user?.name || '',
   department: user?.department || '',
-  division: data.division || '',
-  system: data.system || '',
-  environment: data.environment || '',
+  division: plan.division || '',
+  system: plan.system || '',
+  environment: plan.environment || '',
   startTime: new Date(),
-  items: (data.test_cases || []).map((tc: any) => ({
+  items: (plan.test_cases || []).map((tc: any) => ({
     id: tc.id,
-    item: tc.title,
+    item: tc.description,
     status: '',
     evidence: null,
     evidencePreview: null,
     comment: ''
   })),
   status: 'em_andamento',
-  structureVersion: '2.1.0',
-  validationName: data.name,
-  validationType: data.validation_type,
-  responsible: data.responsible_name,
-  validationStatus: data.status
+  validationName: plan.name,
+  validationType: plan.validation_type,
+  responsible: plan.responsible_name,
+  validationStatus: plan.status
 };
 
   onSuccess(validationSession);
@@ -56,10 +83,7 @@ const validationSession: ValidationSession = {
   } catch (error) {
     console.log("ERRO COMPLETO:", error);
     console.log("ERRO RESPONSE:", error?.response);
-    console.log("STATUS:", error?.response?.status);
     console.log("DATA:", error?.response?.data);
-    console.log("TEST CASES", data.test_cases);
-    console.log("DATA DA API COMPLETA:", data);
     setError('Chave inválida ou validação não encontrada');
   } finally {
     setIsValidating(false);
@@ -81,7 +105,7 @@ const validationSession: ValidationSession = {
             Voltar
           </button>
 
-          <div className="bg-white rounded-lg shadow-md p-8">
+          <div className="bg-white rounded-lg border-l-4 border-[#013171] p-8">
             <div className="flex items-center gap-4 mb-6">
               <div className="bg-[#013171] p-3 rounded-lg">
                 <Key className="w-8 h-8 text-white" />

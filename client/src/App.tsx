@@ -16,6 +16,7 @@ import EditValidationFields, { ValidationField } from '@/pages/EditValidationFie
 import { auditLog } from '@/utils/auditLog';
 import { seedDemoLogs } from '@/utils/seedLogs';
 import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api';
 
 export interface User {
   name: string;
@@ -34,7 +35,7 @@ export interface ValidationItem {
 }
 
 export interface ValidationSession {
-  id: string;
+  sessionId: string;
   user: string;
   department: string;
   division: string;
@@ -45,7 +46,7 @@ export interface ValidationSession {
   startTime: Date;
   endTime?: Date;
   items: ValidationItem[];
-  status: 'em_andamento' | 'concluida' | 'aguardando_teste';
+  status: 'IN_PROGRESS' | 'FAILED' | 'APPROVED';
   structureVersion: string;
   auditorConfirmation?: boolean;
   testerName?: string;
@@ -148,39 +149,42 @@ export default function App() {
     setCurrentScreen('validation-created');
   };
 
-  const handleUpdateItem = (updatedItem) => {
+const handleUpdateItem = (itemId: string, updates: Partial<ValidationItem>) => {
   setCurrentValidation((prev) => {
     if (!prev) return prev;
 
     return {
       ...prev,
       items: prev.items.map((item) =>
-        item.id === updatedItem.id ? updatedItem : item
+        item.id === itemId ? { ...item, ...updates } : item
       )
     };
   });
 };
 
 const handleFinalize = async () => {
+
   if (!currentValidation) return;
 
   try {
-    await api.post('/validation-sessions/finalize/', {
-      sessionId: currentValidation.id,
-      items: currentValidation.items
+
+    await api.patch(`/validation-sessions/${currentValidation.id}/`, {
+      status: "concluida",
+      end_time: new Date()
     });
 
-    // muda status local
     setCurrentValidation({
       ...currentValidation,
-      status: 'finalizada'
+      status: "concluida",
+      endTime: new Date()
     });
 
-    // opcional: voltar pra home
-    setCurrentScreen('home');
+    setCurrentScreen("finalization"); // 👈 ISSO FAZ A PAGE MUDAR
 
   } catch (error) {
-    console.error('Erro ao finalizar validação:', error);
+
+    console.error("Erro ao finalizar:", error);
+
   }
 };
 
