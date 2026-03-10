@@ -3,7 +3,6 @@ import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useLocation } from 'wouter';
 import { useState, useEffect } from 'react';
 import { ChevronLeft, Plus, Edit2, Trash2, BarChart3 } from 'lucide-react';
 
@@ -11,7 +10,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'testador' | 'auditor' | 'admin';
+  role: 'TESTADOR' | 'AUDITOR' | 'ADMIN';
   sector: string;
   status: 'Ativo' | 'Inativo';
 }
@@ -52,7 +51,7 @@ export default function ManageUsers() {
       id: Math.random().toString(36).substr(2, 9),
       name: newUser.name,
       email: newUser.email,
-      role: newUser.role as 'testador' | 'auditor' | 'admin',
+      role: newUser.role as 'TESTADOR' | 'AUDITOR' | 'ADMIN',
       sector: newUser.sector,
       status: 'Ativo',
     };

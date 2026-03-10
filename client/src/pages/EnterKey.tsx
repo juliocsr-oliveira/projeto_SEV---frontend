@@ -32,7 +32,6 @@ export default function EnterKey({ onBack, onSuccess, user }: EnterKeyProps) {
 
         // 2️⃣ Tentar criar nova sessão
         const sessionResponse = await api.post("/validation-sessions/", {
-          test_plan: plan.id,
           started_by: user.id
         });
 
@@ -55,7 +54,6 @@ export default function EnterKey({ onBack, onSuccess, user }: EnterKeyProps) {
       }
 
 const validationSession: ValidationSession = {
-  id: plan.id,
   sessionId: session.id,
   user: user?.name || '',
   department: user?.department || '',
@@ -71,7 +69,7 @@ const validationSession: ValidationSession = {
     evidencePreview: null,
     comment: ''
   })),
-  status: 'em_andamento',
+  status: 'IN_PROGRESS',
   validationName: plan.name,
   validationType: plan.validation_type,
   responsible: plan.responsible_name,

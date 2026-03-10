@@ -168,14 +168,14 @@ const handleFinalize = async () => {
 
   try {
 
-    await api.patch(`/validation-sessions/${currentValidation.id}/`, {
-      status: "concluida",
+    await api.patch(`/validation-sessions/${currentValidation.sessionId}/`, {
+      status: "PASSED",
       end_time: new Date()
     });
 
     setCurrentValidation({
       ...currentValidation,
-      status: "concluida",
+      status: "APPROVED",
       endTime: new Date()
     });
 

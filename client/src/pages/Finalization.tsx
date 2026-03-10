@@ -20,23 +20,8 @@ export default function Finalization({ validation, onComplete, user }: Finalizat
   const isAuditorOrAdmin = user.role === 'auditor' || user.role === 'administrador';
 
 const handleFinalize = async (e: React.FormEvent) => {
-
   e.preventDefault();
-
-  try {
-
-    await api.patch(`/validation-sessions/${validation.sessionId}/`, {
-      status: "APPROVED",
-      finished_at: new Date().toISOString()
-    });
-
-    setExportComplete(true);
-
-  } catch (error) {
-
-    console.error("Erro ao finalizar validação:", error);
-
-  }
+  setExportComplete(true);
 };
 
   const formatDate = (date: Date) => {
@@ -231,7 +216,8 @@ const handleFinalize = async (e: React.FormEvent) => {
                   <FileText className="w-6 h-6 text-[#013171]" />
                   <div className="text-left flex-1">
                     <p className="font-medium text-gray-800">Relatório PDF</p>
-                    <p className="text-sm text-gray-600">validacao_{validation.id}.pdf</p>
+                    <p className="text-sm text-gray-600">
+                      {'validacao_{validation.id}.pdf'}</p>
                   </div>
                   <Download className="w-5 h-5 text-gray-400" />
                 </div>
