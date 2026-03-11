@@ -20,20 +20,52 @@ export default function EnterKey({ onBack, onSuccess, user }: EnterKeyProps) {
     setError('');
     setIsValidating(true);
 
-try {
-  const response = await api.get(`/test-plans/by-key/${accessKey}/`);
+    try {
 
-const data = response.data;
+      // 1️⃣ Buscar Test Plan pela key
+      const planResponse = await api.get(`/test-plans/by-key/${accessKey}/`);
+      const plan = planResponse.data;
+
+      let session;
+
+      try {
+
+        // 2️⃣ Tentar criar nova sessão
+        const sessionResponse = await api.post("/validation-sessions/", {
+          test_plan: plan.id
+        });
+
+        session = sessionResponse.data;
+
+      } catch (error: any) {
+
+          console.log("ERRO COMPLETO:", error);
+          console.log("ERRO RESPONSE:", error?.response);
+          console.log("DATA:", error?.response?.data);
+
+        // 3️⃣ Se já existir sessão ativa, recuperar ela
+        if (error.response?.status === 400 || error.response?.status === 409) {
+
+          const existingSession = await api.get(
+            `/validation-sessions/?test_plan=${plan.id}&status=IN_PROGRESS`
+          );
+
+          session = existingSession.data[0];
+
+        } else {
+          throw error;
+        }
+      }
 
 const validationSession: ValidationSession = {
-  id: data.id,
+  sessionId: session.id,
   user: user?.name || '',
   department: user?.department || '',
-  division: data.division || '',
-  system: data.system || '',
-  environment: data.environment || '',
+  division: plan.division || '',
+  system: plan.system || '',
+  environment: plan.environment || '',
   startTime: new Date(),
-  items: (data.test_cases || []).map((tc: any) => ({
+  items: (plan.test_cases || []).map((tc: any) => ({
     id: tc.id,
     item: tc.description,
     status: '',
@@ -41,12 +73,11 @@ const validationSession: ValidationSession = {
     evidencePreview: null,
     comment: ''
   })),
-  status: 'em_andamento',
-  structureVersion: '2.1.0',
-  validationName: data.name,
-  validationType: data.validation_type,
-  responsible: data.responsible_name,
-  validationStatus: data.status
+  status: 'IN_PROGRESS',
+  validationName: plan.name,
+  validationType: plan.validation_type,
+  responsible: plan.responsible_name,
+  validationStatus: plan.status
 };
 
   onSuccess(validationSession);
@@ -54,10 +85,7 @@ const validationSession: ValidationSession = {
   } catch (error) {
     console.log("ERRO COMPLETO:", error);
     console.log("ERRO RESPONSE:", error?.response);
-    console.log("STATUS:", error?.response?.status);
     console.log("DATA:", error?.response?.data);
-    console.log("TEST CASES", data.test_cases);
-    console.log("DATA DA API COMPLETA:", data);
     setError('Chave inválida ou validação não encontrada');
   } finally {
     setIsValidating(false);

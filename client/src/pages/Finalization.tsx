@@ -3,10 +3,11 @@ import { User, ValidationSession } from '../App';
 import Header from '../components/Header';
 import { CheckCircle, Download, FileText, Table } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
+import api from '@/services/api';
 
 interface FinalizationProps {
   validation: ValidationSession;
-  onComplete: () => void;
+  onComplete: (signature: string) => void;
   user: User;
 }
 
@@ -18,40 +19,6 @@ export default function Finalization({ validation, onComplete, user }: Finalizat
 
   const isAuditorOrAdmin = user.role === 'auditor' || user.role === 'administrador';
 
-  const handleFinalize = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validar confirmação do auditor se necessário
-    if (isAuditorOrAdmin && !auditorConfirmation) {
-      alert('Por favor, confirme que o teste foi realizado e as evidências foram conferidas.');
-      return;
-    }
-    
-    setIsExporting(true);
-    
-    // Registrar log de exportação
-    auditLog.register({
-      user: user.name,
-      department: user.department,
-      action: 'EXPORTACAO_RELATORIO',
-      system: validation.system,
-      environment: validation.environment,
-      validationId: validation.id,
-      details: `Exportação de PDF e Planilha`
-    });
-    
-    // Simular exportação
-    setTimeout(() => {
-      setIsExporting(false);
-      setExportComplete(true);
-      
-      // Voltar para home após 2 segundos
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
-    }, 1500);
-  };
-
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString('pt-BR', {
       day: '2-digit',
@@ -61,6 +28,33 @@ export default function Finalization({ validation, onComplete, user }: Finalizat
       minute: '2-digit'
     });
   };
+
+const handleFinalize = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  setIsExporting(true)
+
+  try {
+
+    await api.post(
+      `/validation-sessions/${validation.id}/finalize/`,
+      {
+        signature: signature
+      }
+    )
+
+    setExportComplete(true)
+
+  } catch (error) {
+
+    console.error("Erro ao finalizar validação", error)
+
+  } finally {
+
+    setIsExporting(false)
+
+  }
+};
 
   const calculateDuration = () => {
     if (!validation.endTime) return '-';
@@ -73,7 +67,7 @@ export default function Finalization({ validation, onComplete, user }: Finalizat
   const stats = {
     ok: validation.items.filter(i => i.status === 'OK').length,
     failed: validation.items.filter(i => i.status === 'Falhou').length,
-    notApplicable: validation.items.filter(i => i.status === 'Não se aplica').length,
+    notApplicable: validation.items.filter(i => i.status === 'NAO_APLICA').length,
   };
 
   return (
@@ -244,7 +238,8 @@ export default function Finalization({ validation, onComplete, user }: Finalizat
                   <FileText className="w-6 h-6 text-[#013171]" />
                   <div className="text-left flex-1">
                     <p className="font-medium text-gray-800">Relatório PDF</p>
-                    <p className="text-sm text-gray-600">validacao_{validation.id}.pdf</p>
+                    <p className="text-sm text-gray-600">
+                      {'validacao_${validation.id}.pdf'}</p>
                   </div>
                   <Download className="w-5 h-5 text-gray-400" />
                 </div>
@@ -252,7 +247,7 @@ export default function Finalization({ validation, onComplete, user }: Finalizat
                   <Table className="w-6 h-6 text-[#013171]" />
                   <div className="text-left flex-1">
                     <p className="font-medium text-gray-800">Planilha Excel</p>
-                    <p className="text-sm text-gray-600">validacao_{validation.id}.xlsx</p>
+                    <p className="text-sm text-gray-600">validacao_${validation.id}.xlsx</p>
                   </div>
                   <Download className="w-5 h-5 text-gray-400" />
                 </div>

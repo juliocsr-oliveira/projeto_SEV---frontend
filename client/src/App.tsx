@@ -16,6 +16,7 @@ import EditValidationFields, { ValidationField } from '@/pages/EditValidationFie
 import { auditLog } from '@/utils/auditLog';
 import { seedDemoLogs } from '@/utils/seedLogs';
 import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api';
 
 export interface User {
   name: string;
@@ -28,13 +29,14 @@ export interface ValidationItem {
   id: string;
   item: string;
   status: 'OK' | 'Não se aplica' | 'Falhou' | '';
-  evidence: File | null;
-  evidencePreview: string | null;
+  evidence: File;
+  evidencePreview: string;
   comment: string;
+  executionId?: string
 }
 
 export interface ValidationSession {
-  id: string;
+  sessionId: string;
   user: string;
   department: string;
   division: string;
@@ -45,7 +47,7 @@ export interface ValidationSession {
   startTime: Date;
   endTime?: Date;
   items: ValidationItem[];
-  status: 'em_andamento' | 'concluida' | 'aguardando_teste';
+  status: 'IN_PROGRESS' | 'FAILED' | 'APPROVED';
   structureVersion: string;
   auditorConfirmation?: boolean;
   testerName?: string;
@@ -161,33 +163,38 @@ const handleUpdateItem = (itemId: string, updates: Partial<ValidationItem>) => {
   });
 };
 
-const handleFinalize = async () => {
+const handleFinalize = async (signature: string) => {
+
   if (!currentValidation) return;
 
   try {
-    await api.post('/validation-sessions/finalize/', {
-      sessionId: currentValidation.id,
-      items: currentValidation.items
-    });
 
-    // muda status local
+    const response = await api.post(
+      `/validation-sessions/${currentValidation.sessionId}/finalize/`,
+      {
+        signature: signature
+      }
+    );
+
     setCurrentValidation({
       ...currentValidation,
-      status: 'finalizada'
+      status: response.data.status,
+      endTime: new Date()
     });
 
-    // opcional: voltar pra home
-    setCurrentScreen('home');
+    setCurrentScreen("finalization");
 
   } catch (error) {
-    console.error('Erro ao finalizar validação:', error);
+
+    console.error("Erro ao finalizar:", error);
+
   }
 };
 
   // Função legada mantida para compatibilidade (EnterKey e outras telas antigas)
   const startValidation = (division: string, system: string, environment: string, gmud?: string) => {
     const newValidation: ValidationSession = {
-      id: Date.now().toString(),
+      id: string,
       user: user!.name,
       department: user!.department,
       division,
@@ -363,7 +370,7 @@ const handleFinalize = async () => {
         <ValidationExecution
           validation={currentValidation}
           onUpdateItem={handleUpdateItem}
-          onFinalize={handleFinalize}
+          onFinalize={() => setCurrentScreen('finalization')}
           onBack={() => setCurrentScreen('home')}
           user={user}
         />

@@ -1,5 +1,7 @@
 import { User, ValidationSession, ValidationItem } from '../App';
 import Header from '../components/Header';
+import api from '@/services/api';
+import { useState } from 'react';
 import { ArrowLeft, CheckCircle, Upload, XCircle, MinusCircle } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
 import { 
@@ -43,27 +45,48 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
     });
   };
 
-  const handleFileUpload = (itemId: string, file: File) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      onUpdateItem(itemId, { 
-        evidence: file, 
-        evidencePreview: reader.result as string 
-      });
-      
-      // Registrar log de upload de evidência
-      auditLog.register({
-        user: validation.user,
-        department: user.department,
-        action: 'UPLOAD_EVIDENCIA',
-        system: validation.system,
-        environment: validation.environment,
-        validationId: validation.id,
-        details: `Item: ${validation.items.find(i => i.id === itemId)?.description}, Arquivo: ${file.name}`
-      });
-    };
-    reader.readAsDataURL(file);
-  };
+const handleFileUpload = async (itemId: string, file: File) => {
+
+  try {
+
+    const reader = new FileReader()
+
+    reader.onloadend = async () => {
+
+      // atualiza preview
+      onUpdateItem(itemId, {
+        evidence: file,
+        evidencePreview: reader.result as string
+      })
+
+      // encontrar executionId do item
+      const executionId = validation.items.find(i => i.id === itemId)?.executionId
+
+      if (!executionId) return
+
+      const formData = new FormData()
+
+      formData.append("test_execution", executionId)
+      formData.append("file_type", "IMAGE")
+      formData.append("file", file)
+
+      await api.post("/evidences/", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      })
+
+    }
+
+    reader.readAsDataURL(file)
+
+  } catch (error) {
+
+    console.error("Erro upload evidência", error)
+
+  }
+
+}
 
   const handleCommentChange = (itemId: string, comment: string) => {
     onUpdateItem(itemId, { comment });
@@ -86,25 +109,9 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
   const allItemsComplete = validation.items.every(item => item.status !== '');
   const hasAtLeastOneEvidence = validation.items.some(item => item.evidence);
   const canFinalize = allItemsComplete && hasAtLeastOneEvidence;
-
   const totalItems = validation.items.length;
   const completedItems = validation.items.filter(item => item.status !== '').length;
   const evidenceCount = validation.items.filter(item => item.evidence !== null).length;
-
-  const handleFinalize = () => {
-    // Registrar log de finalização
-    auditLog.register({
-      user: validation.user,
-      department: user.department,
-      action: 'FINALIZACAO_VALIDACAO',
-      system: validation.system,
-      environment: validation.environment,
-      validationId: validation.id,
-      details: `Total de itens: ${validation.items.length}`
-    });
-    
-    onFinalize();
-  };
 
   console.log("VALIDATION NA EXECUÇÃO:", validation);
   console.log("ITEMS NA EXECUÇÃO:", validation.items);
@@ -213,7 +220,7 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
                 {validation.items.map((item, index) => (
                   <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="px-6 py-4 border-b border-gray-200">
-                      <p className="text-sm text-gray-800">{item.item || item.item}</p>
+                      <p className="text-sm text-gray-800">{item.item}</p>
                     </td>
                     <td className="px-6 py-4 border-b border-gray-200">
                       <select
@@ -228,7 +235,7 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
                       >
                         <option value="">Selecione</option>
                         <option value="OK">✓ OK</option>
-                        <option value="Não se aplica">— Não se aplica</option>
+                        <option value="NAO_APLICA">— Não se aplica</option>
                         <option value="Falhou">✗ Falhou</option>
                       </select>
                     </td>
@@ -310,7 +317,7 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
             )}
           </div>
           <button
-            onClick={handleFinalize}
+            onClick={onFinalize}
             disabled={!canFinalize}
             className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition-colors font-medium flex items-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
             title={!canFinalize ? 'Complete todos os itens e adicione pelo menos 1 evidência' : ''}
