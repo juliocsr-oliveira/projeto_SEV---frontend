@@ -28,9 +28,9 @@ export interface User {
 export interface ValidationItem {
   id: string;
   item: string;
-  status: 'OK' | 'Não se aplica' | 'Falhou' | '';
-  evidence: File;
-  evidencePreview: string;
+  status: 'OK' | 'NAO_APLICA' | 'Falhou' | '';
+  evidence: File | null;
+  evidencePreview: string | null;
   comment: string;
   executionId?: string
 }

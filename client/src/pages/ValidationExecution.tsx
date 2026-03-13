@@ -29,21 +29,26 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
 
   const { validation, user, onUpdateItem, onFinalize, onBack } = props;
 
-  const handleStatusChange = (itemId: string, status: ValidationItem['status']) => {
-    onUpdateItem(itemId, { status });
-    
-    // Registrar log de alteração de status
-    auditLog.register({
-      user: validation.user,
-      department: user.department,
-      action: 'ALTERACAO_STATUS',
-      system: validation.system,
-      environment: validation.environment,
-      validationId: validation.id,
-      resultingStatus: status,
-      details: `Item: ${validation.items.find(i => i.id === itemId)?.description}`
-    });
-  };
+  const handleStatusChange = async (itemId: string, status: ValidationItem['status']) => {
+
+  onUpdateItem(itemId, { status })
+
+  const executionId = validation.items.find(i => i.id === itemId)?.executionId
+
+  if (!executionId) return
+
+  try {
+
+    await api.patch(`/test-executions/${executionId}/`, {
+      status: status
+    })
+
+  } catch (error) {
+
+    console.error("Erro atualizando status", error)
+
+  }
+}
 
 const handleFileUpload = async (itemId: string, file: File) => {
 
@@ -88,22 +93,26 @@ const handleFileUpload = async (itemId: string, file: File) => {
 
 }
 
-  const handleCommentChange = (itemId: string, comment: string) => {
-    onUpdateItem(itemId, { comment });
-    
-    // Registrar log de adição de comentário (apenas se não estiver vazio)
-    if (comment.trim()) {
-      auditLog.register({
-        user: validation.user,
-        department: user.department,
-        action: 'ADICAO_COMENTARIO',
-        system: validation.system,
-        environment: validation.environment,
-        validationId: validation.id,
-        details: `Item: ${validation.items.find(i => i.id === itemId)?.description}`
-      });
-    }
-  };
+const handleCommentChange = async (itemId: string, comment: string) => {
+
+  onUpdateItem(itemId, { comment })
+
+  const executionId = validation.items.find(i => i.id === itemId)?.executionId
+
+  if (!executionId) return
+
+  try {
+
+    await api.patch(`/test-executions/${executionId}/`, {
+      comment: comment
+    })
+
+  } catch (error) {
+
+    console.error("Erro atualizando comentário", error)
+
+  }
+}
 
   // Verificar se todos os itens estão preenchidos
   const allItemsComplete = validation.items.every(item => item.status !== '');
@@ -236,7 +245,7 @@ const handleFileUpload = async (itemId: string, file: File) => {
                         <option value="">Selecione</option>
                         <option value="OK">✓ OK</option>
                         <option value="NAO_APLICA">— Não se aplica</option>
-                        <option value="Falhou">✗ Falhou</option>
+                        <option value="FALHOU">✗ Falhou</option>
                       </select>
                     </td>
                     <td className="px-6 py-4 border-b border-gray-200">
