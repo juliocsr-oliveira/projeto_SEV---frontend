@@ -1,5 +1,7 @@
 import { User, ValidationSession, ValidationItem } from '../App';
 import Header from '../components/Header';
+import api from '@/services/api';
+import { useState } from 'react';
 import { ArrowLeft, CheckCircle, Upload, XCircle, MinusCircle } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
 import { 
@@ -27,84 +29,104 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
 
   const { validation, user, onUpdateItem, onFinalize, onBack } = props;
 
-  const handleStatusChange = (itemId: string, status: ValidationItem['status']) => {
-    onUpdateItem(itemId, { status });
-    
-    // Registrar log de alteração de status
-    auditLog.register({
-      user: validation.user,
-      department: user.department,
-      action: 'ALTERACAO_STATUS',
-      system: validation.system,
-      environment: validation.environment,
-      validationId: validation.id,
-      resultingStatus: status,
-      details: `Item: ${validation.items.find(i => i.id === itemId)?.description}`
-    });
-  };
+  const handleStatusChange = async (itemId: string, status: ValidationItem['status']) => {
 
-  const handleFileUpload = (itemId: string, file: File) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      onUpdateItem(itemId, { 
-        evidence: file, 
-        evidencePreview: reader.result as string 
-      });
-      
-      // Registrar log de upload de evidência
-      auditLog.register({
-        user: validation.user,
-        department: user.department,
-        action: 'UPLOAD_EVIDENCIA',
-        system: validation.system,
-        environment: validation.environment,
-        validationId: validation.id,
-        details: `Item: ${validation.items.find(i => i.id === itemId)?.description}, Arquivo: ${file.name}`
-      });
-    };
-    reader.readAsDataURL(file);
-  };
+  onUpdateItem(itemId, { status })
 
-  const handleCommentChange = (itemId: string, comment: string) => {
-    onUpdateItem(itemId, { comment });
-    
-    // Registrar log de adição de comentário (apenas se não estiver vazio)
-    if (comment.trim()) {
-      auditLog.register({
-        user: validation.user,
-        department: user.department,
-        action: 'ADICAO_COMENTARIO',
-        system: validation.system,
-        environment: validation.environment,
-        validationId: validation.id,
-        details: `Item: ${validation.items.find(i => i.id === itemId)?.description}`
-      });
+  const executionId = validation.items.find(i => i.id === itemId)?.executionId
+
+  if (!executionId) return
+
+  try {
+
+    await api.patch(`/test-executions/${executionId}/`, {
+      status: status
+    })
+
+  } catch (error) {
+
+    console.error("Erro atualizando status", error)
+
+  }
+}
+
+const handleFileUpload = async (itemId: string, file: File) => {
+
+  console.log("UPLOAD ITEM:", itemId)
+  console.log("ITEMS:", validation.items)
+
+  try {
+
+    const reader = new FileReader()
+
+    reader.onloadend = async () => {
+
+      // preview no frontend
+      onUpdateItem(itemId, {
+        evidence: file,
+        evidencePreview: reader.result as string
+      })
+
+      const executionId = validation.items.find(i => i.id === itemId)?.executionId
+
+      console.log("executionId:", executionId)
+
+      if (!executionId) {
+        console.warn("Item sem executionId")
+        return
+      }
+
+      const formData = new FormData()
+
+      formData.append("test_execution", executionId)
+      formData.append("file_type", "IMAGE")
+      formData.append("file", file)
+
+      const response = await api.post("/evidences/", formData)
+
+      console.log("Evidência salva:", response.data)
+
     }
-  };
+
+    reader.readAsDataURL(file)
+
+  } catch (error: any) {
+    console.log("UPLOAD ITEM:", itemId)
+    console.log("ITEMS:", validation.items)
+    console.error("Erro upload evidência:", error.response?.data || error)
+    console.log("executionId:", executionId)
+  }
+
+}
+
+const handleCommentChange = async (itemId: string, comment: string) => {
+
+  onUpdateItem(itemId, { comment })
+
+  const executionId = validation.items.find(i => i.id === itemId)?.executionId
+
+  if (!executionId) return
+
+  try {
+
+    await api.patch(`/test-executions/${executionId}/`, {
+      comment: comment
+    })
+
+  } catch (error) {
+
+    console.error("Erro atualizando comentário", error)
+
+  }
+}
 
   // Verificar se todos os itens estão preenchidos
   const allItemsComplete = validation.items.every(item => item.status !== '');
   const hasAtLeastOneEvidence = validation.items.some(item => item.evidence);
   const canFinalize = allItemsComplete && hasAtLeastOneEvidence;
-
   const totalItems = validation.items.length;
   const completedItems = validation.items.filter(item => item.status !== '').length;
   const evidenceCount = validation.items.filter(item => item.evidence !== null).length;
-
-  const handleFinalize = () => {
-    // Registrar log de finalização
-    auditLog.register({
-      user: validation.user,
-      department: user.department,
-      action: 'FINALIZACAO_VALIDACAO',
-      system: validation.system,
-      environment: validation.environment,
-      validationId: validation.id,
-      details: `Total de itens: ${validation.items.length}`
-    });
-    
-    onFinalize();
-  };
 
   console.log("VALIDATION NA EXECUÇÃO:", validation);
   console.log("ITEMS NA EXECUÇÃO:", validation.items);
@@ -213,7 +235,7 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
                 {validation.items.map((item, index) => (
                   <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="px-6 py-4 border-b border-gray-200">
-                      <p className="text-sm text-gray-800">{item.item || item.item}</p>
+                      <p className="text-sm text-gray-800">{item.item}</p>
                     </td>
                     <td className="px-6 py-4 border-b border-gray-200">
                       <select
@@ -228,12 +250,12 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
                       >
                         <option value="">Selecione</option>
                         <option value="OK">✓ OK</option>
-                        <option value="Não se aplica">— Não se aplica</option>
-                        <option value="Falhou">✗ Falhou</option>
+                        <option value="NAO_APLICA">— Não se aplica</option>
+                        <option value="FALHOU">✗ Falhou</option>
                       </select>
                     </td>
                     <td className="px-6 py-4 border-b border-gray-200">
-                      {item.status !== 'Não se aplica' && (
+                      {item.status !== 'NAO_APLICA' && (
                         <div>
                           {item.evidencePreview ? (
                             <div className="flex items-center gap-2">
@@ -310,7 +332,7 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
             )}
           </div>
           <button
-            onClick={handleFinalize}
+            onClick={onFinalize}
             disabled={!canFinalize}
             className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition-colors font-medium flex items-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
             title={!canFinalize ? 'Complete todos os itens e adicione pelo menos 1 evidência' : ''}

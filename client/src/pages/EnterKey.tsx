@@ -32,12 +32,16 @@ export default function EnterKey({ onBack, onSuccess, user }: EnterKeyProps) {
 
         // 2️⃣ Tentar criar nova sessão
         const sessionResponse = await api.post("/validation-sessions/", {
-          started_by: user.id
+          test_plan: plan.id
         });
 
         session = sessionResponse.data;
 
       } catch (error: any) {
+
+          console.log("ERRO COMPLETO:", error);
+          console.log("ERRO RESPONSE:", error?.response);
+          console.log("DATA:", error?.response?.data);
 
         // 3️⃣ Se já existir sessão ativa, recuperar ela
         if (error.response?.status === 400 || error.response?.status === 409) {

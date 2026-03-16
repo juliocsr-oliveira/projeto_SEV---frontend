@@ -30,8 +30,9 @@ export interface ValidationItem {
   item: string;
   status: 'OK' | 'Não se aplica' | 'Falhou' | '';
   evidence: File | null;
-  evidencePreview: string | null;
+  evidencePreview: string | null; 
   comment: string;
+  executionId?: string
 }
 
 export interface ValidationSession {
@@ -162,24 +163,26 @@ const handleUpdateItem = (itemId: string, updates: Partial<ValidationItem>) => {
   });
 };
 
-const handleFinalize = async () => {
+const handleFinalize = async (signature: string) => {
 
   if (!currentValidation) return;
 
   try {
 
-    await api.patch(`/validation-sessions/${currentValidation.sessionId}/`, {
-      status: "PASSED",
-      end_time: new Date()
-    });
+    const response = await api.post(
+      `/validation-sessions/${currentValidation.sessionId}/finalize/`,
+      {
+        signature: signature
+      }
+    );
 
     setCurrentValidation({
       ...currentValidation,
-      status: "APPROVED",
+      status: response.data.status,
       endTime: new Date()
     });
 
-    setCurrentScreen("finalization"); // 👈 ISSO FAZ A PAGE MUDAR
+    setCurrentScreen("finalization");
 
   } catch (error) {
 
@@ -191,7 +194,7 @@ const handleFinalize = async () => {
   // Função legada mantida para compatibilidade (EnterKey e outras telas antigas)
   const startValidation = (division: string, system: string, environment: string, gmud?: string) => {
     const newValidation: ValidationSession = {
-      id: Date.now().toString(),
+      id: string,
       user: user!.name,
       department: user!.department,
       division,
@@ -367,7 +370,7 @@ const handleFinalize = async () => {
         <ValidationExecution
           validation={currentValidation}
           onUpdateItem={handleUpdateItem}
-          onFinalize={handleFinalize}
+          onFinalize={() => setCurrentScreen('finalization')}
           onBack={() => setCurrentScreen('home')}
           user={user}
         />
