@@ -15,82 +15,93 @@ export default function EnterKey({ onBack, onSuccess, user }: EnterKeyProps) {
   const [error, setError] = useState('');
   const [isValidating, setIsValidating] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsValidating(true);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
+  setIsValidating(true);
+
+  try {
+    // 1️⃣ Buscar Test Plan
+    const planResponse = await api.get(`/test-plans/by-key/${accessKey}/`);
+    const plan = planResponse.data;
+
+    let session;
 
     try {
+      // 2️⃣ Criar sessão
+      const response = await api.post("/validation-sessions/", {
+        test_plan: plan.id
+      });
 
-      // 1️⃣ Buscar Test Plan pela key
-      const planResponse = await api.get(`/test-plans/by-key/${accessKey}/`);
-      const plan = planResponse.data;
+      // 3️⃣ Buscar sessão completa (com executions)
+      const sessionDetail = await api.get(
+        `/validation-sessions/${response.data.id}/`
+      );
 
-      let session;
+      session = sessionDetail.data;
 
-      try {
+    } catch (error: any) {
 
-        // 2️⃣ Tentar criar nova sessão
-        const sessionResponse = await api.post("/validation-sessions/", {
-          test_plan: plan.id
-        });
+      if (error.response?.status === 400 || error.response?.status === 409) {
 
-        session = sessionResponse.data;
+        // 4️⃣ Buscar sessão existente
+        const existingSession = await api.get(
+          `/validation-sessions/?test_plan=${plan.id}&status=IN_PROGRESS`
+        );
 
-      } catch (error: any) {
+        const existing = existingSession.data[0];
 
-          console.log("ERRO COMPLETO:", error);
-          console.log("ERRO RESPONSE:", error?.response);
-          console.log("DATA:", error?.response?.data);
+        // 🔥 buscar detalhe dela também
+        const sessionDetail = await api.get(
+          `/validation-sessions/${existing.id}/`
+        );
 
-        // 3️⃣ Se já existir sessão ativa, recuperar ela
-        if (error.response?.status === 400 || error.response?.status === 409) {
+        session = sessionDetail.data;
 
-          const existingSession = await api.get(
-            `/validation-sessions/?test_plan=${plan.id}&status=IN_PROGRESS`
-          );
-
-          session = existingSession.data[0];
-
-        } else {
-          throw error;
-        }
+      } else {
+        throw error;
       }
+    }
 
-const validationSession: ValidationSession = {
-  sessionId: session.id,
-  user: user?.name || '',
-  department: user?.department || '',
-  division: plan.division || '',
-  system: plan.system || '',
-  environment: plan.environment || '',
-  startTime: new Date(),
-  items: (plan.test_cases || []).map((tc: any) => ({
-    id: tc.id,
-    item: tc.description,
-    status: '',
-    evidence: null,
-    evidencePreview: null,
-    comment: ''
-  })),
-  status: 'IN_PROGRESS',
-  validationName: plan.name,
-  validationType: plan.validation_type,
-  responsible: plan.responsible_name,
-  validationStatus: plan.status
-};
+    // 🔥 AQUI ESTÁ A CORREÇÃO PRINCIPAL
+    const validationSession: ValidationSession = {
+      sessionId: session.id,
+      user: user?.name || '',
+      department: user?.department || '',
+      division: plan.division || '',
+      system: plan.system || '',
+      environment: plan.environment || '',
+      startTime: new Date(session.started_at),
 
-  onSuccess(validationSession);
+      // ✅ AGORA USANDO executions
+      items: (session.executions || []).map((exec: any) => ({
+        id: exec.id,
+        item: exec.test_case_name || 'Item',
+        status: exec.status || '',
+        evidence: null,
+        evidencePreview: null,
+        comment: exec.comment || '',
+        executionId: exec.id
+      })),
 
-  } catch (error) {
+      status: session.status,
+      validationName: plan.name,
+      validationType: plan.validation_type,
+      responsible: plan.responsible_name,
+      validationStatus: plan.status
+    };
+
+    onSuccess(validationSession);
+
+  } catch (error: any) {
     console.log("ERRO COMPLETO:", error);
     console.log("ERRO RESPONSE:", error?.response);
     console.log("DATA:", error?.response?.data);
+
     setError('Chave inválida ou validação não encontrada');
   } finally {
     setIsValidating(false);
   }
-
 };
 
   return (

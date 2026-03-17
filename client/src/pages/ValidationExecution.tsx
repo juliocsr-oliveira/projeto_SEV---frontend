@@ -82,7 +82,11 @@ const handleFileUpload = async (itemId: string, file: File) => {
       formData.append("file_type", "IMAGE")
       formData.append("file", file)
 
-      const response = await api.post("/evidences/", formData)
+      const response = await api.post("/evidences/", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      })
 
       console.log("Evidência salva:", response.data)
 
