@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, ValidationSession } from '../App';
 import Header from '../components/Header';
+import api from '@/services/api'
 import { ArrowLeft, Search, Eye, Filter, Download, FileText, Table as TableIcon } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
 
@@ -21,23 +22,51 @@ export default function PreviousValidations({ onBack, user }: PreviousValidation
   });
   const [searchDate, setSearchDate] = useState('');
   const [selectedValidation, setSelectedValidation] = useState<ValidationSession | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Carregar validações do localStorage
-    const stored = localStorage.getItem('sev-validations');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setValidations(parsed);
-      setFilteredValidations(parsed);
+useEffect(() => {
+  const fetchValidations = async () => {
+    try {
+      const response = await api.get('/validation-sessions/');
+
+      console.log(response.data);
+      console.log(response.data.results);
+      
+      const mapped = response.data.results.map((session: any) => ({
+        id: session.id,
+        system: session.test_plan_system || '', // ajustar depois no backend
+        environment: session.test_plan_environment || '',
+        user: session.started_by_name || `User ${session.started_by}`, 
+        status: session.status === 'APPROVED' ? 'concluida' : 'em_andamento',
+        gmud: session.gmud_version || '',
+        startTime: session.started_at,
+        items: session.executions?.map((exec: any) => ({
+          id: exec.id,
+          item: exec.test_case_name,
+          status: exec.status,
+          comment: exec.comment,
+          evidence: exec.evidences?.[0]?.file || null
+        })) || []
+      }));
+
+      setValidations(mapped);
+      setFilteredValidations(mapped);
+
+    } catch (error) {
+      console.error("Erro ao buscar validações:", error);
     }
-    
-    // Registrar log de consulta
-    auditLog.register({
-      user: user.name,
-      department: user.department,
-      action: 'CONSULTA_VALIDACOES',
-      details: 'Acesso à tela de validações anteriores'
-    });
+  };
+
+  fetchValidations();
+}, []);
+
+useEffect(() => {
+  auditLog.register({
+    user: user.name,
+    department: user.department,
+    action: 'CONSULTA_VALIDACOES',
+    details: 'Acesso à tela de validações anteriores'
+  });
   }, [user]);
 
   useEffect(() => {
@@ -90,6 +119,32 @@ export default function PreviousValidations({ onBack, user }: PreviousValidation
     setSearchDate('');
   };
 
+  const handleOpen = async (id: number) => {
+  try {
+    const response = await api.get(`/validation-sessions/${id}/`);
+
+    const mapped = {
+      id: response.data.id,
+      system: response.data.test_plan_system,
+      environment: response.data.test_plan_environment,
+      user: response.data.started_by_name || `User ${response.data.started_by}`,
+      startTime: response.data.started_at,
+      items: response.data.executions?.map((exec: any) => ({
+        id: exec.id,
+        item: exec.test_case_name,
+        status: exec.status,
+        comment: exec.comment,
+        evidence: exec.evidences?.[0]?.file || null
+      })) || []
+    };
+
+    setSelectedValidation(mapped);
+
+  } catch (error) {
+    console.error("Erro ao abrir validação:", error);
+  }
+};
+
   const handleDownloadPDF = (validation: ValidationSession) => {
     // Simular download de PDF
     auditLog.register({
@@ -116,13 +171,26 @@ export default function PreviousValidations({ onBack, user }: PreviousValidation
       validationId: validation.id,
       details: 'Download de XLSX'
     });
-    
-    alert(`Download do Excel da validação ${validation.id} iniciado!`);
+
+    window.open(`/api/validation-sessions/${validation.id}/export-xlsx`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header user={user} />
+
+    {selectedImage && (
+    <div 
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+      onClick={() => setSelectedImage(null)}
+    >
+      <img
+        src={selectedImage}
+        alt="Evidência"
+        className="max-w-[90%] max-h-[90%] rounded shadow-lg"
+      />
+    </div>
+  )}
       
       <main className="container mx-auto px-6 py-8">
         <button
@@ -264,7 +332,7 @@ export default function PreviousValidations({ onBack, user }: PreviousValidation
                       </td>
                       <td className="px-6 py-4 border-b border-gray-200">
                         <button
-                          onClick={() => setSelectedValidation(validation)}
+                          onClick={() => handleOpen(validation.id)}
                           className="flex items-center gap-1 text-[#013171] hover:text-[#024a9f] transition-colors"
                         >
                           <Eye className="w-4 h-4" />
@@ -341,6 +409,18 @@ export default function PreviousValidations({ onBack, user }: PreviousValidation
                       {item.comment && (
                         <p className="text-xs text-gray-600 mt-2">Comentário: {item.comment}</p>
                       )}
+                      {item.evidence && (
+                        <div className ="mt-3">
+                          <p className="text-xs text-gray-500 mb-1">Evidência</p>
+                          
+                          <img
+                            src={item.evidence}
+                            alt="Evidência"
+                            className="w-32 h-32 object-cover rounded border cursor-pointer hover:scale-105 transition"
+                            onClick={() => setSelectedImage(item.evidence)}
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -357,5 +437,5 @@ export default function PreviousValidations({ onBack, user }: PreviousValidation
         </div>
       )}
     </div>
-  );
-}
+
+  );}

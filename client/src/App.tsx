@@ -123,7 +123,7 @@ export default function App() {
   };
 
   // Nova função: Receber sistemas selecionados e ir para edição de campos
-  const handleSystemsSelected = (systems: SelectedSystem[]) => {
+  const handleSystemsSelected = (systems: SelectedSystem) => {
     if (!validationDraft) {
       alert('Erro: Nenhuma validação em rascunho encontrada');
       setCurrentScreen('home');

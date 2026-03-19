@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { User } from '../App';
 import { ValidationDraft } from './CreateValidation';
 import Header from '../components/Header';
+import api from '@/services/api';
 import { ArrowLeft, Check, AlertCircle, Server } from 'lucide-react';
 import { 
   Breadcrumb, 
@@ -32,7 +33,7 @@ const availableSystems = [
 const availableEnvironments = ['QA', 'HMG', 'PRÉ-PRODUÇÃO', 'PRD'];
 
 export default function SystemSelection({ validationDraft, onNext, onBack, user }: SystemSelectionProps) {
-  const [selectedSystems, setSelectedSystems] = useState<SelectedSystem []>([]);
+  const [selectedSystems, setSelectedSystems] = useState<SelectedSystem | null>(null);
   const [currentSystem, setCurrentSystem] = useState('');
   const [currentEnvironment, setCurrentEnvironment] = useState('');
   const [error, setError] = useState('');
@@ -43,35 +44,30 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
       return;
     }
 
-    // Verificar se já existe a mesma combinação
-    const alreadyExists = selectedSystems.some(
-      s => s.system === currentSystem && s.environment === currentEnvironment
-    );
-
-    if (alreadyExists) {
-      setError('Esta combinação de sistema e ambiente já foi adicionada');
-      return;
-    }
-
-    setSelectedSystems([...selectedSystems, { system: currentSystem, environment: currentEnvironment }]);
-    setCurrentSystem('');
-    setCurrentEnvironment('');
+    setSelectedSystems({ system: currentSystem, environment: currentEnvironment });
     setError('');
   };
 
-  const handleRemoveSystem = (index: number) => {
-    setSelectedSystems(selectedSystems.filter((_, i) => i !== index));
-  };
+  const handleSubmit = async () => {
+  if (!selectedSystems) {
+    setError('Selecione um sistema para continuar');
+    return;
+  }
 
-  const handleSubmit = () => {
-    if (selectedSystems.length === 0) {
-      setError('Adicione pelo menos um sistema para continuar');
-      return;
-    }
+  try {
+    await api.patch(`/test-plans/${validationDraft.id}/`, {
+      system: selectedSystems.system,
+      environment: selectedSystems.environment,
+      responsible: user.id
+    });
 
-    // Avançar para próxima etapa
-    onNext(selectedSystems);
-  };
+    onNext([selectedSystems]);
+
+  } catch (error) {
+    console.error("Erro ao atualizar TestPlan:", error);
+    setError("Erro ao salvar sistema. Tente novamente.");
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -155,7 +151,6 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
                     Sistema
                   </label>
                   <select
-                    id="system"
                     value={currentSystem}
                     onChange={(e) => {
                       setCurrentSystem(e.target.value);
@@ -175,7 +170,6 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
                     Ambiente
                   </label>
                   <select
-                    id="environment"
                     value={currentEnvironment}
                     onChange={(e) => {
                       setCurrentEnvironment(e.target.value);
@@ -208,38 +202,36 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
             </div>
 
             {/* Lista de Sistemas Selecionados */}
-            {selectedSystems.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-medium text-gray-800 mb-3">Sistemas Selecionados</h3>
-                <div className="space-y-2">
-                  {selectedSystems.map((sys, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3"
-                    >
+                {selectedSystems && (
+                  <div className="mb-6">
+                    <h3 className="font-medium text-gray-800 mb-3">Sistema Selecionado</h3>
+
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
                       <div className="flex items-center gap-2">
                         <Check className="w-5 h-5 text-green-600" />
-                        <span className="font-medium text-gray-800">{sys.system}</span>
+                        <span className="font-medium text-gray-800">
+                          {selectedSystems.system}
+                        </span>
                         <span className="text-gray-500">-</span>
-                        <span className="text-gray-600">{sys.environment}</span>
+                        <span className="text-gray-600">
+                          {selectedSystems.environment}
+                        </span>
                       </div>
+
                       <button
-                        onClick={() => handleRemoveSystem(index)}
+                        onClick={() => setSelectedSystems(null)}
                         className="text-red-600 hover:text-red-700 text-sm font-medium"
                       >
                         Remover
                       </button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                  </div>
+                )}
 
             {/* Informação */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-gray-700">
-                Você pode adicionar múltiplos sistemas e ambientes para esta validação. 
-                Cada combinação será validada separadamente.
+                Selecione o sistema e ambiente para esta valição.
               </p>
             </div>
 
@@ -255,9 +247,9 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
               <button
                 onClick={handleSubmit}
                 type="button"
-                disabled={selectedSystems.length === 0}
+                disabled={!selectedSystems}
                 className={`flex-1 py-3 rounded-md transition-colors font-medium ${
-                  selectedSystems.length === 0
+                  !selectedSystems
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-[#013171] text-white hover:bg-[#024a9f]'
                 }`}
@@ -270,4 +262,4 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
       </main>
     </div>
   );
-}
+};
