@@ -4,6 +4,7 @@ import { ValidationDraft } from './CreateValidation';
 import { SelectedSystem } from './SystemSelection';
 import api from '@/services/api';
 import Header from '@/components/Header';
+import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { 
   Breadcrumb, 
@@ -27,6 +28,7 @@ export default function EditValidationFields({
   onBack, 
   user 
 }: EditValidationFieldsProps) {
+  const { User, isAuthenticated, logout } = useAuth();
   const [fields, setFields] = useState<ValidationField[]>([]);
   const [newFieldName, setNewFieldName] = useState('');
   const [error, setError] = useState('');
@@ -135,7 +137,7 @@ const handleSubmit = async () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} />
+      <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
 
       <main className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto">
@@ -199,7 +201,7 @@ const handleSubmit = async () => {
                 <p className="font-medium text-gray-900">{validationDraft.type}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Sistemas Selecionados</p>
+                <p className="text-sm text-gray-600">Sistema Selecionado</p>
                 <p className="font-medium text-gray-900">{selectedSystems.length}</p>
               </div>
               <div>
@@ -218,8 +220,8 @@ const handleSubmit = async () => {
           )}
 
           {/* Lista de Campos Existentes */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Campos Atuais</h2>
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-8 border-l-4 border-[#013171]">
+            <h2 className="text-lg font-semibold text-[#013171] mb-4">Campos Atuais</h2>
             
             {fields.length === 0 ? (
               <p className="text-gray-500 text-center py-8">Nenhum campo adicionado ainda</p>

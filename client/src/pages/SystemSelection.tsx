@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { User } from '../App';
 import { ValidationDraft } from './CreateValidation';
 import Header from '../components/Header';
+import { useAuth } from '@/contexts/AuthContext';
 import api from '@/services/api';
 import { ArrowLeft, Check, AlertCircle, Server } from 'lucide-react';
 import { 
@@ -33,6 +34,7 @@ const availableSystems = [
 const availableEnvironments = ['QA', 'HMG', 'PRÉ-PRODUÇÃO', 'PRD'];
 
 export default function SystemSelection({ validationDraft, onNext, onBack, user }: SystemSelectionProps) {
+  const { User, isAuthenticated, logout } = useAuth();
   const [selectedSystems, setSelectedSystems] = useState<SelectedSystem | null>(null);
   const [currentSystem, setCurrentSystem] = useState('');
   const [currentEnvironment, setCurrentEnvironment] = useState('');
@@ -58,7 +60,6 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
     await api.patch(`/test-plans/${validationDraft.id}/`, {
       system: selectedSystems.system,
       environment: selectedSystems.environment,
-      responsible: user.id
     });
 
     onNext([selectedSystems]);
@@ -71,7 +72,7 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} />
+      <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
 
       <main className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto">
@@ -117,9 +118,9 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
                 <Server className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">Selecionar Sistemas</h2>
+                <h2 className="text-2xl font-bold text-gray-800">Selecione o Sistema</h2>
                 <p className="text-gray-600 text-sm">
-                  Adicione os sistemas e ambientes a serem validados
+                  Adicione o sistema e ambiente a ser validado
                 </p>
               </div>
             </div>
@@ -135,10 +136,9 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
                   <span className="font-medium">Divisão:</span> {validationDraft.division}
                 </div>
                 <div>
-                  <span className="font-medium">Responsável:</span> {validationDraft.responsible}
+                  <span className="font-medium">Criado por:</span> {validationDraft.createdBy}
                 </div>
                 <div>
-                  <span className="font-medium">ID:</span> {validationDraft.id}
                 </div>
               </div>
             </div>
@@ -231,7 +231,7 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
             {/* Informação */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-gray-700">
-                Selecione o sistema e ambiente para esta valição.
+                Selecione o sistema e ambiente para esta validação.
               </p>
             </div>
 

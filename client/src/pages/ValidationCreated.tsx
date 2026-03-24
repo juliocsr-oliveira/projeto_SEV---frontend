@@ -125,16 +125,8 @@ export default function ValidationCreated({
                   <p className="font-medium text-gray-800">{validationDraft.division}</p>
                 </div>
                 <div>
-                  <span className="text-gray-600">Responsável:</span>
-                  <p className="font-medium text-gray-800">{validationDraft.responsible}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">ID:</span>
-                  <p className="font-medium text-gray-800 font-mono">{validationDraft.id}</p>
-                </div>
-                <div>
                   <span className="text-gray-600">Criado por:</span>
-                  <p className="font-medium text-gray-800">{user.name}</p>
+                  <p className="font-medium text-gray-800">{validationDraft.createdBy}</p>
                 </div>
               </div>
             </div>

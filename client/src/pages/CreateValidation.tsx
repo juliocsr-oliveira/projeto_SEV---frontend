@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { User } from '@/App';
 import api from '@/services/api';
 import Header from '@/components/Header';
+import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, FileText, AlertCircle } from 'lucide-react';
 import { 
   Breadcrumb, 
@@ -32,6 +33,7 @@ export interface ValidationDraft {
 }
 
 export default function CreateValidation({ onNext, onBack, user }: CreateValidationProps) {
+  const { User, isAuthenticated, logout } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -74,8 +76,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       name: formData.name,
       description: formData.description,
       division: formData.division,
-      validation_type: formData.type.toUpperCase(),
-      status: "RASCUNHO",
+      validation_type: formData.type,
       responsible: user.id
     });
 
@@ -89,10 +90,10 @@ const handleSubmit = async (e: React.FormEvent) => {
       description: createdPlan.description,
       type: createdPlan.validation_type,
       division: createdPlan.division,
-      responsible: user.name,
-      createdBy: user.name,
+      responsible: createdPlan.responsible_name,
+      createdBy: createdPlan.created_by_name,
       createdAt: new Date(createdPlan.created_at),
-      status: "RASCUNHO",
+      status: createdPlan.status,
       accessKey: createdPlan.access_key,
     });
 
@@ -120,7 +121,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} />
+      <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
 
       <main className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto">
@@ -142,7 +143,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink className="text-gray-400">
-                    3. Validação Criada
+                    3. Gerar Chave
                   </BreadcrumbLink>
                 </BreadcrumbItem>
               </BreadcrumbList>
@@ -231,11 +232,11 @@ const handleSubmit = async (e: React.FormEvent) => {
                   } rounded-md focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none`}
                 >
                   <option value="">Selecione um tipo</option>
-                  <option value="Funcional">Funcional</option>
-                  <option value="Regressão">Regressão</option>
-                  <option value="Integração">Integração</option>
-                  <option value="Performance">Performance</option>
-                  <option value="Segurança">Segurança</option>
+                  <option value="FUNCIONAL">Funcional</option>
+                  <option value="REGRESSÃO">Regressão</option>
+                  <option value="INTEGRAÇÃO">Integração</option>
+                  <option value="PERFORMANCE">Performance</option>
+                  <option value="SEGURANÇA">Segurança</option>
                   <option value="UAT">UAT (Aceite do Usuário)</option>
                 </select>
                 {errors.type && (

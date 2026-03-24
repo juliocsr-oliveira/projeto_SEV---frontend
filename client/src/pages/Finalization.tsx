@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { User, ValidationSession } from '../App';
 import Header from '../components/Header';
+import { useAuth } from '@/contexts/AuthContext';
 import { CheckCircle, Download, FileText, Table } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
 import api from '@/services/api';
@@ -12,6 +13,7 @@ interface FinalizationProps {
 }
 
 export default function Finalization({ validation, onComplete, user }: FinalizationProps) {
+  const { User, isAuthenticated, logout } = useAuth();
   const [signature, setSignature] = useState('');
   const [auditorConfirmation, setAuditorConfirmation] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -72,7 +74,7 @@ const handleFinalize = async (e: React.FormEvent) => {
 
 return (
   <div className="min-h-screen bg-gray-50">
-    <Header user={user} />
+    <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
 
     <main className="container mx-auto px-6 py-12">
       <div className="max-w-3xl mx-auto">

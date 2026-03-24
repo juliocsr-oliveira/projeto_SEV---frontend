@@ -41,8 +41,8 @@ export default function Header({ onLogout }: HeaderProps) {
           <div className="flex items-center gap-2">
             <UserIcon className="w-5 h-5" />
             <div className="text-right">
-              <p className="text-sm font-medium">{user.name}</p>
-              <p className="text-xs text-blue-200 capitalize">{user.role}</p>
+              <p className="text-sm font-medium">{user.first_name}</p>
+              <p className="text-xs text-blue-200 capitalize">{user.name}</p>
             </div>
           </div>
           {onLogout && (

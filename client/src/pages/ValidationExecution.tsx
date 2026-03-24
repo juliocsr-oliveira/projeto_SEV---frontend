@@ -1,6 +1,7 @@
 import { User, ValidationSession, ValidationItem } from '../App';
 import Header from '../components/Header';
 import api from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { ArrowLeft, CheckCircle, Upload, XCircle, MinusCircle } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
@@ -22,6 +23,7 @@ interface ValidationExecutionProps {
 }
 
 export default function ValidationExecution(props: ValidationExecutionProps) {
+  const { User, isAuthenticated, logout } = useAuth();
   if (!props.validation) {
     console.log("VALIDATION AINDA NÃO SETADA");
     return <div>Carregando...</div>;
@@ -32,6 +34,8 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
   const handleStatusChange = async (itemId: string, status: ValidationItem['status']) => {
 
   onUpdateItem(itemId, { status })
+
+  if (!status) return;
 
   const executionId = validation.items.find(i => i.id === itemId)?.executionId
 
@@ -124,10 +128,23 @@ const handleCommentChange = async (itemId: string, comment: string) => {
   }
 }
 
+const isItemValid = (item: ValidationItem) => {
+  if (!item.status) return false;
+
+  const hasEvidence = 
+    Boolean(item.evidencePreview) ||
+    Boolean(item.evidences && item.evidences.length > 0);
+
+  if (item.status === 'FALHOU' || item.status === 'NAO_APLICA') {
+    return Boolean(item.comment?.trim()) && hasEvidence;
+  }
+
+  return true; // OK
+};
+
   // Verificar se todos os itens estão preenchidos
-  const allItemsComplete = validation.items.every(item => item.status !== '');
-  const hasAtLeastOneEvidence = validation.items.some(item => item.evidence);
-  const canFinalize = allItemsComplete && hasAtLeastOneEvidence;
+  const allItemsValid = validation.items.every(isItemValid);
+  const canFinalize = allItemsValid;
   const totalItems = validation.items.length;
   const completedItems = validation.items.filter(item => item.status !== '').length;
   const evidenceCount = validation.items.filter(item => item.evidence !== null).length;
@@ -137,7 +154,7 @@ const handleCommentChange = async (itemId: string, comment: string) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} />
+      <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
       
       <main className="container mx-auto px-6 py-8">
         {/* Breadcrumb - mostrar apenas se a validação tem nome (criada pelo novo fluxo) */}
@@ -179,8 +196,8 @@ const handleCommentChange = async (itemId: string, comment: string) => {
           <div className="bg-[#013171] text-white p-6">
             <h2 className="text-2xl font-bold mb-2">Execução da Validação</h2>
             {validation.validationName && (
-              <p className="text-blue-100 mb-4">
-                {validation.validationName} {validation.validationType && `— ${validation.validationType}`}
+              <p className="text-lg font-semibold text-white/90 mb-4">
+                {validation.validationName} 
               </p>
             )}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -204,14 +221,10 @@ const handleCommentChange = async (itemId: string, comment: string) => {
               )}
               {validation.responsible && (
                 <div>
-                  <span className="text-blue-200">Responsável:</span>
-                  <p className="font-medium">{validation.responsible}</p>
                 </div>
               )}
               {validation.validationStatus && (
                 <div>
-                  <span className="text-blue-200">Status:</span>
-                  <p className="font-medium">{validation.validationStatus}</p>
                 </div>
               )}
             </div>
@@ -247,8 +260,8 @@ const handleCommentChange = async (itemId: string, comment: string) => {
                         onChange={(e) => handleStatusChange(item.id, e.target.value as ValidationItem['status'])}
                         className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none ${
                           item.status === 'OK' ? 'bg-green-50 text-green-700' :
-                          item.status === 'Falhou' ? 'bg-red-50 text-red-700' :
-                          item.status === 'Não se aplica' ? 'bg-gray-50 text-gray-700' :
+                          item.status === 'FALHOU' ? 'bg-red-50 text-red-700' :
+                          item.status === 'NAO_APLICA' ? 'bg-gray-50 text-gray-700' :
                           ''
                         }`}
                       >
@@ -259,7 +272,7 @@ const handleCommentChange = async (itemId: string, comment: string) => {
                       </select>
                     </td>
                     <td className="px-6 py-4 border-b border-gray-200">
-                      {item.status !== 'NAO_APLICA' && (
+                      {item.status && (
                         <div>
                           {item.evidencePreview ? (
                             <div className="flex items-center gap-2">
@@ -308,7 +321,11 @@ const handleCommentChange = async (itemId: string, comment: string) => {
                         value={item.comment || ''}
                         onChange={(e) => handleCommentChange(item.id, e.target.value)}
                         placeholder="Adicionar comentário..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+                        className={`w-full px-3 py-2 border rounded-md text-sm outline-none ${
+                          (item.status === 'FALHOU' || item.status === 'NAO_APLICA') && !item.comment
+                            ? 'border-red-500'
+                            : 'border-gray-300'
+                        }`}
                       />
                     </td>
                   </tr>
@@ -323,7 +340,7 @@ const handleCommentChange = async (itemId: string, comment: string) => {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-4">
         <div className="container mx-auto px-6 flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            {allItemsComplete ? (
+            {allItemsValid ? (
               <span className="text-green-600 font-medium flex items-center gap-2">
                 <CheckCircle className="w-5 h-5" />
                 Todos os itens foram validados

@@ -1,240 +1,237 @@
-import { useAuth } from '@/contexts/AuthContext';
-import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
 import { useState, useEffect } from 'react';
-import { ChevronLeft, Plus, Edit2, Trash2, BarChart3 } from 'lucide-react';
+import { ChevronLeft, Plus, Edit2, BarChart3 } from 'lucide-react';
+import api from '@/services/api';
 
 interface User {
   id: string;
   name: string;
   email: string;
-  role: 'TESTADOR' | 'AUDITOR' | 'ADMIN';
+  role: 'testador' | 'auditor' | 'admin';
   sector: string;
   status: 'Ativo' | 'Inativo';
 }
 
-/**
- * Design: Tabela de gestão de utilizadores
- * - Listar utilizadores
- * - Criar novo utilizador
- * - Editar utilizador
- * - Desativar utilizador
- * - Extrair logs
- */
-export default function ManageUsers() {
-  const { user, isAuthenticated } = useAuth();
-  const [, navigate] = useLocation();
-  const [users, setUsers] = useState<User[]>([
-    { id: '1', name: 'João Silva', email: 'joao@example.com', role: 'testador', sector: 'Passageiros', status: 'Ativo' },
-    { id: '2', name: 'Maria Santos', email: 'maria@example.com', role: 'auditor', sector: 'Auditoria', status: 'Ativo' },
-    { id: '3', name: 'Pedro Costa', email: 'pedro@example.com', role: 'testador', sector: 'Logística', status: 'Ativo' },
-  ]);
+interface ManageUsersProps {
+  user: any;
+}
 
+export default function ManageUsers({ user }: ManageUsersProps) {
   const [showNewUserForm, setShowNewUserForm] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'testador', sector: 'Passageiros' });
+  const [users, setUsers] = useState<User[]>([]);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+  });
 
-  useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'ADMIN') {
-      navigate('/home');
+  // ✅ FUNÇÃO CENTRAL (REUTILIZÁVEL)
+  const reloadUsers = async () => {
+    try {
+      const res = await api.get('/users/');
+
+      const mapped = res.data.results.map((u: any) => ({
+        id: u.id,
+        name: `${u.first_name} ${u.last_name}`.trim() || u.username,
+        email: u.email,
+        role: u.role?.toLowerCase(),
+        sector: '-',
+        status: u.active ? 'Ativo' : 'Inativo'
+      }));
+
+      setUsers(mapped);
+    } catch (err) {
+      console.error(err);
     }
-  }, [isAuthenticated, user, navigate]);
+  };
 
-  const handleAddUser = () => {
+  // ✅ CARREGA AO INICIAR
+  useEffect(() => {
+    reloadUsers();
+  }, []);
+
+  // 🔒 PROTEÇÃO
+  if (user.role !== 'ADMIN') {
+    return <div className="p-6 text-red-600">Acesso negado</div>;
+  }
+
+  // ✅ CRIAR USUÁRIO
+  const handleAddUser = async () => {
     if (!newUser.name || !newUser.email) {
-      alert('Por favor, preencha todos os campos');
+      alert('Preencha os campos');
       return;
     }
 
-    const newUserObj: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role as 'TESTADOR' | 'AUDITOR' | 'ADMIN',
-      sector: newUser.sector,
-      status: 'Ativo',
-    };
+    const [firstName, ...rest] = newUser.name.split(' ');
+    const lastName = rest.join(' ');
 
-    setUsers([...users, newUserObj]);
-    setNewUser({ name: '', email: '', role: 'testador', sector: 'Passageiros' });
-    setShowNewUserForm(false);
-    alert('Utilizador criado com sucesso!');
+    try {
+      await api.post('/users/', {
+        email: newUser.email,
+        first_name: firstName,
+        last_name: lastName,
+      });
+
+      await reloadUsers(); // 🔥 AGORA FUNCIONA
+
+      setShowNewUserForm(false);
+      setNewUser({ name: '', email: '' });
+
+    } catch (err: any) {
+      console.error(err.response?.data);
+      alert(JSON.stringify(err.response?.data));
+    }
   };
 
-  const handleToggleStatus = (id: string) => {
-    setUsers(users.map(u =>
-      u.id === id ? { ...u, status: u.status === 'Ativo' ? 'Inativo' : 'Ativo' } : u
-    ));
-  };
+  // ✅ ALTERAR STATUS
+  const handleChangeRole = async (id: string, newRole: string) => {
+  try {
+    await api.patch(`/users/${id}/`, {
+      role_write: newRole.toUpperCase()
+    });
+
+    await reloadUsers();
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const handleChangeStatus = async (id: string, newStatus: string) => {
+  try {
+    await api.patch(`/users/${id}/`, {
+      active_write: newStatus === 'Ativo'
+    });
+
+    await reloadUsers();
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const handleExtractLogs = (userId: string) => {
-    alert(`Extraindo logs para o utilizador ${userId}...`);
-    navigate('/logs');
+    window.open(`/api/logs?user=${userId}`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <main className="container mx-auto px-6 py-8">
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Botão Voltar */}
-        <button
-          onClick={() => navigate('/settings')}
-          className="flex items-center gap-2 text-[#013171] hover:underline mb-8 font-medium"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Voltar
-        </button>
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
 
-        {/* Título e Botão Novo Utilizador */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Gerenciar Utilizadores
-          </h1>
-          <Button
-            onClick={() => setShowNewUserForm(!showNewUserForm)}
-            className="bg-[#013171] hover:bg-[#0a1f4a] text-white"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Utilizador
-          </Button>
-        </div>
+          {/* HEADER */}
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-xl font-bold text-gray-800">
+              Gerenciar Usuários
+            </h1>
 
-        {/* Formulário de Novo Utilizador */}
-        {showNewUserForm && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Criar Novo Utilizador
-            </h2>
+            <Button
+              onClick={() => setShowNewUserForm(!showNewUserForm)}
+              className="bg-[#013171] hover:bg-[#024a9f] text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Usuário
+            </Button>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome
-                </label>
+          {/* FORM */}
+          {showNewUserForm && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="grid grid-cols-2 gap-4">
                 <Input
-                  type="text"
-                  placeholder="Nome completo"
+                  placeholder="Nome"
                   value={newUser.name}
                   onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
                 <Input
-                  type="email"
-                  placeholder="email@example.com"
+                  placeholder="Email"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Função
-                </label>
-                <Select value={newUser.role} onValueChange={(val) => setNewUser({ ...newUser, role: val as any })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="testador">Testador</SelectItem>
-                    <SelectItem value="auditor">Auditor</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Setor
-                </label>
-                <Select value={newUser.sector} onValueChange={(val) => setNewUser({ ...newUser, sector: val })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Passageiros">Passageiros</SelectItem>
-                    <SelectItem value="Logística">Logística</SelectItem>
-                    <SelectItem value="Comércio">Comércio</SelectItem>
-                    <SelectItem value="Auditoria">Auditoria</SelectItem>
-                    <SelectItem value="Administração">Administração</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="mt-4 flex gap-2">
+                <Button onClick={handleAddUser}
+                className="bg-[#013171] hover:bg-[#024a9f] text-white">
+                  Criar
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowNewUserForm(false)}
+                >
+                  Cancelar
+                </Button>
               </div>
             </div>
+          )}
 
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowNewUserForm(false)}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleAddUser}
-                className="flex-1 bg-[#013171] hover:bg-[#0a1f4a] text-white"
-              >
-                Criar Utilizador
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Tabela de Utilizadores */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          {/* TABELA */}
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
-                <tr className="bg-gray-100 border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Nome</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Email</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Função</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Setor</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Ações</th>
+              <thead className="bg-gray-100 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Nome</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Função</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Ações</th>
                 </tr>
               </thead>
+
               <tbody>
                 {users.map((u, index) => (
                   <tr key={u.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-4 py-4 text-sm text-gray-900 font-medium">{u.name}</td>
-                    <td className="px-4 py-4 text-sm text-gray-900">{u.email}</td>
-                    <td className="px-4 py-4 text-sm text-gray-900 capitalize">{u.role}</td>
-                    <td className="px-4 py-4 text-sm text-gray-900">{u.sector}</td>
-                    <td className="px-4 py-4 text-sm">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        u.status === 'Ativo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {u.status}
-                      </span>
+                    <td className="px-4 py-3 text-sm">{u.name}</td>
+                    <td className="px-4 py-3 text-sm">{u.email}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <Select 
+                        value={u.role}
+                        onValueChange={(value) => handleChangeRole(u.id, value)}
+                      >
+                        <SelectTrigger className='w-[140px]'>
+                            <SelectValue />
+                        </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="testador">Testador</SelectItem>
+                            <SelectItem value="auditor">Auditor</SelectItem>
+                            <SelectItem value="admin">Administrador</SelectItem>
+                          </SelectContent>
+                      </Select>      
                     </td>
-                    <td className="px-4 py-4 text-sm">
+                    <td className="px-4 py-3 text-sm">
+                      <Select
+                        value={u.status}
+                        onValueChange={(value) => handleChangeStatus(u.id, value)}
+                      >
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Ativo">Ativo</SelectItem>
+                          <SelectItem value="Inativo">Inativo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleToggleStatus(u.id)}
-                          className="text-[#013171] hover:underline flex items-center gap-1"
+                          className="p-2 text-[#013171] hover:bg-blue-100 rounded transition-colors"
                         >
                           <Edit2 className="w-4 h-4" />
-                          {u.status === 'Ativo' ? 'Desativar' : 'Ativar'}
                         </button>
+
                         <button
                           onClick={() => handleExtractLogs(u.id)}
-                          className="text-[#013171] hover:underline flex items-center gap-1"
+                          className="p-2 text-purple-600 hover:bg-purple-100 rounded transition-colors"
                         >
                           <BarChart3 className="w-4 h-4" />
-                          Logs
                         </button>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
+
             </table>
           </div>
         </div>

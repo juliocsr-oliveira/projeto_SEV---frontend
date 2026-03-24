@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, ValidationSession } from '../App';
 import Header from '../components/Header';
+import { useAuth } from '@/contexts/AuthContext';
 import api from '@/services/api'
 import { ArrowLeft, Search, Eye, Filter, Download, FileText, Table as TableIcon } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
@@ -11,6 +12,7 @@ interface PreviousValidationsProps {
 }
 
 export default function PreviousValidations({ onBack, user }: PreviousValidationsProps) {
+  const { User, isAuthenticated, logout } = useAuth();
   const [validations, setValidations] = useState<ValidationSession[]>([]);
   const [filteredValidations, setFilteredValidations] = useState<ValidationSession[]>([]);
   const [filters, setFilters] = useState({
@@ -177,17 +179,25 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} />
+      <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
 
     {selectedImage && (
     <div 
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[999]"
       onClick={() => setSelectedImage(null)}
     >
+      <button
+      onClick={() => setSelectedImage(null)}
+      className="absolute top-6 right-6 text-white text-3xl font-bold hover:scale-110 transition"
+      >
+        x        
+      </button>
+
       <img
         src={selectedImage}
         alt="Evidência"
         className="max-w-[90%] max-h-[90%] rounded shadow-lg"
+        onClick={(e) => e.stopPropagation}
       />
     </div>
   )}
@@ -368,7 +378,6 @@ useEffect(() => {
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="bg-[#013171] text-white p-6 sticky top-0">
               <h3 className="text-xl font-bold mb-2">Detalhes da Validação</h3>
-              <p className="text-blue-200 text-sm">ID: {selectedValidation.id}</p>
             </div>
 
             <div className="p-6 space-y-6">
@@ -392,7 +401,7 @@ useEffect(() => {
               </div>
 
               <div>
-                <h4 className="font-semibold mb-3">Itens Validados</h4>
+                <h4 className="font-semibold mb-3">Itens Validados:</h4>
                 <div className="space-y-2">
                   {selectedValidation.items.map((item) => (
                     <div key={item.id} className="border border-gray-200 rounded p-3">
@@ -428,7 +437,7 @@ useEffect(() => {
 
               <button
                 onClick={() => setSelectedValidation(null)}
-                className="w-full bg-gray-200 text-gray-700 py-3 rounded-md hover:bg-gray-300 transition-colors font-medium"
+                className="w-full bg-[#013171] text-white py-3 rounded-md hover:bg-[#024a9f] transition-colors font-medium"
               >
                 Fechar
               </button>
