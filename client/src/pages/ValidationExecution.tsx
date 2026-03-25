@@ -13,6 +13,7 @@ import {
   BreadcrumbPage, 
   BreadcrumbSeparator 
 } from '../components/ui/breadcrumb';
+import { all } from 'axios';
 
 interface ValidationExecutionProps {
   validation: ValidationSession;
@@ -33,12 +34,20 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
 
   const handleStatusChange = async (itemId: string, status: ValidationItem['status']) => {
 
+    if (!status) {
+      onUpdateItem(itemId, {
+        status: '',
+        comment: '',
+        evidence: null,
+        evidencePreview: null,
+        evidences: []
+      });
+      return;
+    }
+
   onUpdateItem(itemId, { status })
 
-  if (!status) return;
-
   const executionId = validation.items.find(i => i.id === itemId)?.executionId
-
   if (!executionId) return
 
   try {
@@ -53,6 +62,11 @@ export default function ValidationExecution(props: ValidationExecutionProps) {
 
   }
 }
+
+const normalizedItems = validation.items.map(item => ({
+  ...item,
+  status: item.status === 'PENDENTE' ? '' : item.status
+}));
 
 const handleFileUpload = async (itemId: string, file: File) => {
 
@@ -128,28 +142,35 @@ const handleCommentChange = async (itemId: string, comment: string) => {
   }
 }
 
-const isItemValid = (item: ValidationItem) => {
-  if (!item.status) return false;
+  const isItemValid = (item: ValidationItem) => {
+    if (!item.status || item.status === 'PENDENTE') return false;
 
-  const hasEvidence = 
-    Boolean(item.evidencePreview) ||
-    Boolean(item.evidences && item.evidences.length > 0);
+    const hasEvidence = 
+      Boolean(item.evidencePreview) ||
+      Boolean(item.evidences?.length);
 
-  if (item.status === 'FALHOU' || item.status === 'NAO_APLICA') {
-    return Boolean(item.comment?.trim()) && hasEvidence;
-  }
+    if (item.status === 'FALHOU' || item.status === 'NAO_APLICA') {
+      if (!item.comment?.trim()) return false;
+      if (!hasEvidence) return false;
+    }
 
-  return true; // OK
-};
+    return true; // OK
+  };
 
   // Verificar se todos os itens estão preenchidos
-  const allItemsValid = validation.items.every(isItemValid);
+  const allItemsValid = validation.items.length > 0 && validation.items.every(isItemValid);
   const canFinalize = allItemsValid;
   const totalItems = validation.items.length;
   const completedItems = validation.items.filter(item => item.status !== '').length;
   const evidenceCount = validation.items.filter(item => item.evidence !== null).length;
 
   console.log("VALIDATION NA EXECUÇÃO:", validation);
+  console.log("VALIDAÇÃO ITEM A ITEM:", validation.items.map(i => ({
+    id: i.id,
+    status: i.status,
+    valid: isItemValid(i),
+  })));
+
   console.log("ITEMS NA EXECUÇÃO:", validation.items);
 
   return (
@@ -272,7 +293,7 @@ const isItemValid = (item: ValidationItem) => {
                       </select>
                     </td>
                     <td className="px-6 py-4 border-b border-gray-200">
-                      {item.status && (
+                      {item.status && item.status !== 'PENDENTE' && item.status !== '' &&(
                         <div>
                           {item.evidencePreview ? (
                             <div className="flex items-center gap-2">

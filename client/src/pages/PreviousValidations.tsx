@@ -177,6 +177,16 @@ useEffect(() => {
     window.open(`/api/validation-sessions/${validation.id}/export-xlsx`);
   };
 
+  const getStats = (items: any[]) => {
+  return {
+    ok: items.filter(i => i.status === 'OK').length,
+    failed: items.filter(i => i.status === 'FALHOU').length,
+    notApplicable: items.filter(i => i.status === 'NAO_APLICA').length,
+  };
+};
+
+  const stats = selectedValidation ? getStats(selectedValidation.items) : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
@@ -197,7 +207,7 @@ useEffect(() => {
         src={selectedImage}
         alt="Evidência"
         className="max-w-[90%] max-h-[90%] rounded shadow-lg"
-        onClick={(e) => e.stopPropagation}
+        onClick={(e) => e.stopPropagation()}
       />
     </div>
   )}
@@ -381,7 +391,35 @@ useEffect(() => {
             </div>
 
             <div className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="bg-gray-50 rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-800 mb-3">
+                        Resumo da Validação
+                      </h3>
+
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {stats.ok}
+                          </div>
+                          <div className="text-xs text-gray-600">OK</div>
+                        </div>
+
+                        <div>
+                          <div className="text-2xl font-bold text-red-600">
+                            {stats.failed}
+                          </div>
+                          <div className="text-xs text-gray-600">Falhou</div>
+                        </div>
+
+                        <div>
+                          <div className="text-2xl font-bold text-yellow-600">
+                            {stats.notApplicable}
+                          </div>
+                          <div className="text-xs text-gray-600">Não se aplica</div>
+                        </div>
+                      </div>
+                    </div>
                 <div>
                   <span className="text-gray-600">Sistema:</span>
                   <p className="font-medium">{selectedValidation.system}</p>
@@ -409,10 +447,10 @@ useEffect(() => {
                         <p className="text-sm flex-1">{item.item}</p>
                         <span className={`px-2 py-1 rounded text-xs whitespace-nowrap ${
                           item.status === 'OK' ? 'bg-green-100 text-green-800' :
-                          item.status === 'Falhou' ? 'bg-red-100 text-red-800' :
+                          item.status === 'FALHOU' ? 'bg-red-100 text-red-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                          {item.status}
+                          {item.status === 'NAO_APLICA' ? 'Não se aplica' : item.status }
                         </span>
                       </div>
                       {item.comment && (

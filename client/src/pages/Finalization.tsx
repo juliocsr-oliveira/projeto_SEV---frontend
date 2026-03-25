@@ -68,7 +68,7 @@ const handleFinalize = async (e: React.FormEvent) => {
 
   const stats = {
     ok: validation.items.filter(i => i.status === 'OK').length,
-    failed: validation.items.filter(i => i.status === 'Falhou').length,
+    failed: validation.items.filter(i => i.status === 'FALHOU').length,
     notApplicable: validation.items.filter(i => i.status === 'NAO_APLICA').length,
   };
 
@@ -125,7 +125,7 @@ return (
 
                   <div>
                     <span className="text-gray-600">Usuário:</span>
-                    <p className="font-semibold">{validation.user}</p>
+                    <p className="font-semibold">{validation.user?.first_name || '-'}</p>
                   </div>
 
                   {validation.testerName && (
@@ -172,7 +172,7 @@ return (
                   </div>
 
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-gray-600">
+                    <div className="text-3xl font-bold text-yellow-600">
                       {stats.notApplicable}
                     </div>
                     <div className="text-sm text-gray-600">Não se aplica</div>
