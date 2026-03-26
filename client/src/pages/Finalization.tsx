@@ -1,19 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { User, ValidationSession } from '../App';
 import Header from '../components/Header';
 import { useAuth } from '@/contexts/AuthContext';
 import { CheckCircle, Download, FileText, Table } from 'lucide-react';
 import { auditLog } from '../utils/auditLog';
 import api from '@/services/api';
+import { useNavigate } from 'react-router-dom';
 
 interface FinalizationProps {
   validation: ValidationSession;
   onComplete: (signature: string) => void;
+  setExportComplete: (true);
+  onBack: () => void;
   user: User;
 }
 
 export default function Finalization({ validation, onComplete, user }: FinalizationProps) {
-  const { User, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const { user: authUser, isAuthenticated, logout } = useAuth();
+  const [validationData, setValidationData] = useState<ValidationSession | null>(null)
   const [signature, setSignature] = useState('');
   const [auditorConfirmation, setAuditorConfirmation] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -21,56 +26,77 @@ export default function Finalization({ validation, onComplete, user }: Finalizat
 
   const isAuditorOrAdmin = user.role === 'auditor' || user.role === 'administrador';
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  useEffect(() => {
+    const fetchValidation = async () => {
+      try{
+      const response = await api.get(
+        `/validation-sessions/${validation.sessionId}/`
+      )
+      setValidationData(response.data)
+    } catch (error) {
+      console.error("Erro ao buscar dados da validação", error)
+    }
+    }
 
-const handleFinalize = async (e: React.FormEvent) => {
-  e.preventDefault();
+    fetchValidation()
+  }, [validation.sessionId])
 
-  setIsExporting(true)
-
-  try {
-
-    await api.post(
-      `/validation-sessions/${validation.sessionId}/finalize/`,
-      {
-        signature: signature
-      }
-    )
-
-    setExportComplete(true)
-
-  } catch (error) {
-
-    console.error("Erro ao finalizar validação", error)
-
-  } finally {
-
-    setIsExporting(false)
-
+  if (!validationData) {
+    return <div>Carregando...</div>
   }
-};
+
+  const executions = Array.isArray(validationData.executions)
+    ? validationData.executions
+    : []
+    
+  const stats = {
+    ok: executions.filter(e => e.status === 'OK').length,
+    failed: executions.filter(e => e.status === 'FALHOU').length,
+    notApplicable: executions.filter(e => e.status === 'NAO_APLICA').length,
+  }
+
+  const formatDate = (date?: string) => {
+    if (!date) return '-'
+    return new Date(date).toLocaleString('pt-Br')
+  }
 
   const calculateDuration = () => {
-    if (!validation.endTime) return '-';
-    const start = new Date(validation.startTime).getTime();
-    const end = new Date(validation.endTime).getTime();
-    const diffMinutes = Math.round((end - start) / 60000);
-    return `${diffMinutes} minutos`;
+    if (!validationData.finished_at || !validationData.started_at) return '-'
+
+    const start = new Date(validationData.started_at).getTime()
+    const end = new Date(validationData.finished_at).getTime()
+    
+    return `${Math.round((end - start) / 60000)} minutos`
   };
 
-  const stats = {
-    ok: validation.items.filter(i => i.status === 'OK').length,
-    failed: validation.items.filter(i => i.status === 'FALHOU').length,
-    notApplicable: validation.items.filter(i => i.status === 'NAO_APLICA').length,
+
+  const handleFinalize = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    setIsExporting(true)
+
+    try {
+
+      await api.post(
+        `/validation-sessions/${validation.sessionId}/finalize/`,
+        {
+          signature: signature
+        }
+      )
+
+      setExportComplete(true)
+
+    } catch (error) {
+
+      console.error("Erro ao finalizar validação", error)
+
+    } finally {
+
+      setIsExporting(false)
+
+    }
   };
+
 
 return (
   <div className="min-h-screen bg-gray-50">
@@ -101,19 +127,29 @@ return (
                 </h3>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
+
+                  {validation.validationName && (
+                    <div className="col-span-2">
+                      <span className="text-gray-600"> Validação:</span>
+                      <p className="font-semibold text-base">
+                        {validation.validationName}
+                      </p>
+                    </div>
+                  )}
+                  
                   <div>
                     <span className="text-gray-600">Sistema:</span>
-                    <p className="font-semibold">{validation.system}</p>
+                    <p className="font-semibold">{validationData.test_plan_system}</p>
                   </div>
 
                   <div>
                     <span className="text-gray-600">Ambiente:</span>
-                    <p className="font-semibold">{validation.environment}</p>
+                    <p className="font-semibold">{validationData.test_plan_environment}</p>
                   </div>
 
                   <div>
                     <span className="text-gray-600">Divisão:</span>
-                    <p className="font-semibold">{validation.division}</p>
+                    <p className="font-semibold">{validationData.test_plan_division}</p>
                   </div>
 
                   {validation.gmudVersion && (
@@ -124,8 +160,13 @@ return (
                   )}
 
                   <div>
-                    <span className="text-gray-600">Usuário:</span>
-                    <p className="font-semibold">{validation.user?.first_name || '-'}</p>
+                    <span className="text-gray-600">Executado por:</span>
+                    <p className="font-semibold">{validationData?.started_by_name || 'Não executado'}</p>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-600"> Criado por:</span>
+                    <p className="font-semibold">{validation.responsible || '-'}</p>
                   </div>
 
                   {validation.testerName && (
@@ -138,14 +179,7 @@ return (
                   <div>
                     <span className="text-gray-600">Início:</span>
                     <p className="font-semibold">
-                      {validation.startTime.toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-600">Término:</span>
-                    <p className="font-semibold">
-                      {validation.endTime?.toLocaleString('pt-BR')}
+                      {formatDate(validationData.started_at)}
                     </p>
                   </div>
                 </div>
@@ -155,7 +189,6 @@ return (
                 <h3 className="font-semibold text-gray-800 mb-4">
                   Estatísticas
                 </h3>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-green-600">
@@ -308,9 +341,12 @@ return (
 
             </div>
 
-            <p className="text-sm text-gray-500">
-              Redirecionando para a página inicial...
-            </p>
+            <button
+              onClick={returnToHome}
+              className="bg-[#013171] hover:bg-[#024a9f] text-white py-3 rounded-md py-2 px-24 rounded-md transition-colors"
+            >
+              Voltar para página inicial
+            </button>
 
           </div>
         )}
