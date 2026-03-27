@@ -29,6 +29,7 @@ export interface SelectedSystem {
 const availableSystems = [
   { id: 'encomendas', name: 'Encomendas', description: 'Sistema de gestão de encomendas' },
   { id: 'jornada-digital', name: 'Jornada Digital', description: 'Plataforma de experiência do cliente' },
+  { id: 'sev', name: 'SEV', description: 'Sistema de Execução de Validações' }
 ];
 
 const availableEnvironments = ['QA', 'HMG', 'PRÉ-PRODUÇÃO', 'PRD'];

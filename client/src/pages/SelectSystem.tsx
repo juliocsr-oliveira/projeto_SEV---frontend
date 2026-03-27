@@ -92,6 +92,7 @@ export default function SelectSystem() {
                 <SelectContent>
                   <SelectItem value="Encomendas">Encomendas</SelectItem>
                   <SelectItem value="Jornada Digital">Jornada Digital</SelectItem>
+                  <SelectItem value="SEV">SEV</SelectItem>
                 </SelectContent>
               </Select>
             </div>

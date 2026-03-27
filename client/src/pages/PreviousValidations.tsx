@@ -187,6 +187,36 @@ useEffect(() => {
 
   const stats = selectedValidation ? getStats(selectedValidation.items) : null;
 
+  const getStatusBadge = (validation: any) => {
+  // 🔸 não finalizada
+  if (validation.status !== 'concluida') {
+    return {
+      label: 'Em andamento',
+      className: 'bg-yellow-100 text-yellow-800'
+    };
+  }
+
+  // 🔸 verifica se tem algo diferente de OK
+  const hasError = validation.items?.some(
+    (item: any) => item.status !== 'OK'
+  );
+
+  if (hasError) {
+    return {
+      label: 'Concluída',
+      className: 'bg-red-100 text-red-800'
+    };
+  }
+
+  // 🔸 tudo OK
+  return {
+    label: 'Concluída',
+    className: 'bg-green-100 text-green-800'
+  };
+};
+
+  const badge = selectedValidation ? getStatusBadge(selectedValidation) : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
@@ -241,6 +271,7 @@ useEffect(() => {
               >
                 <option value="">Sistema</option>
                 <option value="Encomendas">Encomendas</option>
+                <option value="SEV">SEV</option>
                 <option value="Jornada Digital">Jornada Digital</option>
               </select>
 
@@ -322,7 +353,9 @@ useEffect(() => {
                     </td>
                   </tr>
                 ) : (
-                  filteredValidations.map((validation, index) => (
+                  filteredValidations.map((validation, index) => {
+                    const badge = getStatusBadge(validation);
+                    return (
                     <tr key={validation.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-6 py-4 border-b border-gray-200 text-sm">
                         {formatDate(validation.startTime)}
@@ -342,13 +375,9 @@ useEffect(() => {
                         {validation.gmud || '-'}
                       </td>
                       <td className="px-6 py-4 border-b border-gray-200 text-sm">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          validation.status === 'concluida' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {validation.status === 'concluida' ? 'Concluída' : 'Em andamento'}
-                        </span>
+                          <span className={`px-2 py-1 rounded text-xs ${badge.className}`}>
+                            {badge.label}
+                          </span>
                       </td>
                       <td className="px-6 py-4 border-b border-gray-200">
                         <button
@@ -374,7 +403,7 @@ useEffect(() => {
                         </button>
                       </td>
                     </tr>
-                  ))
+                  )})
                 )}
               </tbody>
             </table>
@@ -391,7 +420,22 @@ useEffect(() => {
             </div>
 
             <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Sistema:</span>
+                  <p className="font-medium">{selectedValidation.system}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Ambiente:</span>
+                  <p className="font-medium">{selectedValidation.environment}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Executado por:</span>
+                  <p className="font-medium">{selectedValidation.user}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Data:</span>
+                  <p className="font-medium">{formatDate(selectedValidation.startTime)}</p>
+                </div>
                 <div className="bg-gray-50 rounded-lg p-4">
                       <h3 className="font-semibold text-gray-800 mb-3">
                         Resumo da Validação
@@ -420,23 +464,6 @@ useEffect(() => {
                         </div>
                       </div>
                     </div>
-                <div>
-                  <span className="text-gray-600">Sistema:</span>
-                  <p className="font-medium">{selectedValidation.system}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Ambiente:</span>
-                  <p className="font-medium">{selectedValidation.environment}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Responsável:</span>
-                  <p className="font-medium">{selectedValidation.user}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Data:</span>
-                  <p className="font-medium">{formatDate(selectedValidation.startTime)}</p>
-                </div>
-              </div>
 
               <div>
                 <h4 className="font-semibold mb-3">Itens Validados:</h4>
@@ -483,6 +510,6 @@ useEffect(() => {
           </div>
         </div>
       )}
-    </div>
-
-  );}
+        </div>
+  );
+}

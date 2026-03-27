@@ -402,7 +402,8 @@ const handleFinalize = async (signature: string) => {
       {currentScreen === 'finalization' && currentValidation && user && (
         <Finalization
           validation={currentValidation}
-          onComplete={returnToHome}
+          onComplete={currentValidation}
+          returnToHome={returnToHome}
           user={user}
         />
       )}

@@ -10,13 +10,13 @@ import { useNavigate } from 'react-router-dom';
 interface FinalizationProps {
   validation: ValidationSession;
   onComplete: (signature: string) => void;
-  setExportComplete: (true);
+  setExportComplete?: (value: boolean) => void;
   onBack: () => void;
+  returnToHome: () => void;
   user: User;
 }
 
-export default function Finalization({ validation, onComplete, user }: FinalizationProps) {
-  const navigate = useNavigate();
+export default function Finalization({ validation, onComplete, user, returnToHome }: FinalizationProps) {
   const { user: authUser, isAuthenticated, logout } = useAuth();
   const [validationData, setValidationData] = useState<ValidationSession | null>(null)
   const [signature, setSignature] = useState('');
