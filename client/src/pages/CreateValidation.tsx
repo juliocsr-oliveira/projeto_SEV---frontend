@@ -25,11 +25,11 @@ export interface ValidationDraft {
   description: string;
   type: string;
   division: string;
+  setor: string;
   responsible: string;
   createdBy: string;
   createdAt: Date;
-  status: 'RASCUNHO' | 'CRIADA' | 'CONFIGURADA' | 'EXECUTADA';
-  accessKey: string;
+  status: 'DRAFT' | 'READY' | 'IN_PROGRESS' | 'VALIDATED_IN_PARTS' | 'VALIDATED';
 }
 
 export default function CreateValidation({ onNext, onBack, user }: CreateValidationProps) {
@@ -39,6 +39,7 @@ export default function CreateValidation({ onNext, onBack, user }: CreateValidat
     description: '',
     type: '',
     division: '',
+    setor: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -60,6 +61,10 @@ export default function CreateValidation({ onNext, onBack, user }: CreateValidat
 
     if (!formData.division) {
       newErrors.division = 'Divisão é obrigatória';
+    }
+
+    if (!formData.setor) {
+      newErrors.setor = 'Setor é obrigatório';
     }
 
     setErrors(newErrors);
@@ -90,11 +95,11 @@ const handleSubmit = async (e: React.FormEvent) => {
       description: createdPlan.description,
       type: createdPlan.validation_type,
       division: createdPlan.division,
+      setor: createdPlan.setor,
       responsible: createdPlan.responsible_name,
       createdBy: createdPlan.created_by_name,
       createdAt: new Date(createdPlan.created_at),
       status: createdPlan.status,
-      accessKey: createdPlan.access_key,
     });
 
   } catch (error: any) {
@@ -273,6 +278,33 @@ const handleSubmit = async (e: React.FormEvent) => {
                   </div>
                 )}
               </div>
+
+                 <div>
+                  <label htmlFor="setor" className="block text-sm font-medium text-gray-700 mb-2">
+                    Setor <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="setor"
+                    value={formData.setor}
+                    onChange={(e) => handleChange('setor', e.target.value)}
+                    className={`w-full px-4 py-2 border ${
+                      errors.setor ? 'border-red-500' : 'border-gray-300'
+                    } rounded-md focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none`}
+                  >
+                    <option value="">Selecione um setor</option>
+                    <option value="SUPORTE">Suporte</option>
+                    <option value="INFRA">Infraestrutura</option>
+                    <option value="PRICING">Pricing</option>
+                    <option value="CLOUD">Cloud</option>
+                  </select>
+
+                  {errors.setor && (
+                    <div className="flex items-center gap-1 mt-1 text-red-500 text-sm">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.setor}
+                    </div>
+                  )}
+                </div>
 
               {/* Informação de campos obrigatórios */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
