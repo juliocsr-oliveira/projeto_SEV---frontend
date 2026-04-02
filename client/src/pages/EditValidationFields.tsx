@@ -34,10 +34,10 @@ export default function EditValidationFields({
   const [error, setError] = useState('');
 
   useEffect(() => {
-  if (validationDraft?.id) {
-    fetchFields();
-  }
-}, [validationDraft.id]);
+    if (validationDraft?.id) {
+      fetchFields();
+    }
+  }, [validationDraft.id]);
 
   const fetchFields = async () => {
   try {
@@ -66,9 +66,7 @@ const handleAddField = async () => {
   try {
     await api.post("/test-case/", {
       description: newFieldName,
-      test_plan: validationDraft.id,
-      active: true,
-      order_index: fields.length + 1
+      test_plan: validationDraft.id
     });
 
     setNewFieldName("");
@@ -124,12 +122,26 @@ const handleSubmit = async () => {
 
   try {
 
-    onNext({
-      ...validationDraft
-    });
+    await api.patch(`/test-plans/${validationDraft.id}/`, {
+      setores: ['GERAL'],
+    })
 
-  } catch (error) {
-    console.error("Erro ao continuar:", error);
+    const check = await api.get(`/test-plans/${validationDraft.id}/`);
+    console.log("SETOR NO BACK:", check.data.setores);
+
+    const response = await api.post(`/test-plans/${validationDraft.id}/preparar/`);
+    const updatePlan = response.data;
+
+    onNext(updatePlan);
+
+  } catch (error:any) {
+    console.error("Erro ao adicionar campo:", error);
+    
+    if (error.response?.data) {
+      console.log("Error backend:", error.response.data);
+      console.log(JSON.stringify(error.response.data, null, 2));
+    }
+
     setError("Erro ao continuar.");
   }
 

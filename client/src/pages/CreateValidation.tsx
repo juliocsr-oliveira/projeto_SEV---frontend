@@ -25,7 +25,6 @@ export interface ValidationDraft {
   description: string;
   type: string;
   division: string;
-  setor: string;
   responsible: string;
   createdBy: string;
   createdAt: Date;
@@ -33,14 +32,16 @@ export interface ValidationDraft {
 }
 
 export default function CreateValidation({ onNext, onBack, user }: CreateValidationProps) {
-  const { User, isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     type: '',
     division: '',
-    setor: '',
+    isMultivalidation: false
   });
+
+  isMultivalidation: Boolean;
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -63,10 +64,6 @@ export default function CreateValidation({ onNext, onBack, user }: CreateValidat
       newErrors.division = 'Divisão é obrigatória';
     }
 
-    if (!formData.setor) {
-      newErrors.setor = 'Setor é obrigatório';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -82,6 +79,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       description: formData.description,
       division: formData.division,
       validation_type: formData.type,
+      is_multivalidation: formData.isMultivalidation,
       responsible: user.id
     });
 
@@ -95,7 +93,6 @@ const handleSubmit = async (e: React.FormEvent) => {
       description: createdPlan.description,
       type: createdPlan.validation_type,
       division: createdPlan.division,
-      setor: createdPlan.setor,
       responsible: createdPlan.responsible_name,
       createdBy: createdPlan.created_by_name,
       createdAt: new Date(createdPlan.created_at),
@@ -126,7 +123,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
+      <Header user={user} onLogout={logout}/>
 
       <main className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto">
@@ -278,33 +275,19 @@ const handleSubmit = async (e: React.FormEvent) => {
                   </div>
                 )}
               </div>
-
-                 <div>
-                  <label htmlFor="setor" className="block text-sm font-medium text-gray-700 mb-2">
-                    Setor <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="setor"
-                    value={formData.setor}
-                    onChange={(e) => handleChange('setor', e.target.value)}
-                    className={`w-full px-4 py-2 border ${
-                      errors.setor ? 'border-red-500' : 'border-gray-300'
-                    } rounded-md focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none`}
-                  >
-                    <option value="">Selecione um setor</option>
-                    <option value="SUPORTE">Suporte</option>
-                    <option value="INFRA">Infraestrutura</option>
-                    <option value="PRICING">Pricing</option>
-                    <option value="CLOUD">Cloud</option>
-                  </select>
-
-                  {errors.setor && (
-                    <div className="flex items-center gap-1 mt-1 text-red-500 text-sm">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.setor}
-                    </div>
-                  )}
-                </div>
+              {/* Checkbox para validação múltipla */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="isMultivalidation"
+                  checked={formData.isMultivalidation}
+                  onChange={(e) => handleChange('isMultivalidation', e.target.checked)}
+                  className="form-checkbox h-5 w-5 text-[#013171] focus:ring-[#013171]"
+                />
+                <label htmlFor="isMultivalidation" className="block text-sm font-medium text-gray-700">
+                  Esta validação será realizada por múltiplos validadores
+                </label>
+              </div>
 
               {/* Informação de campos obrigatórios */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

@@ -16,7 +16,7 @@ import {
 
 interface SystemSelectionProps {
   validationDraft: ValidationDraft;
-  onNext: (systems: SelectedSystem[]) => void;
+  onNext: (systems: SelectedSystem) => void;
   onBack: () => void;
   user: User;
 }
@@ -29,14 +29,13 @@ export interface SelectedSystem {
 const availableSystems = [
   { id: 'encomendas', name: 'Encomendas', description: 'Sistema de gestão de encomendas' },
   { id: 'jornada-digital', name: 'Jornada Digital', description: 'Plataforma de experiência do cliente' },
-  { id: 'sev', name: 'SEV', description: 'Sistema de Execução de Validações' }
 ];
 
 const availableEnvironments = ['QA', 'HMG', 'PRÉ-PRODUÇÃO', 'PRD'];
 
 export default function SystemSelection({ validationDraft, onNext, onBack, user }: SystemSelectionProps) {
-  const { User, isAuthenticated, logout } = useAuth();
-  const [selectedSystems, setSelectedSystems] = useState<SelectedSystem | null>(null);
+  const { logout } = useAuth();
+  const [selectedSystem, setSelectedSystem] = useState<SelectedSystem | null>(null);
   const [currentSystem, setCurrentSystem] = useState('');
   const [currentEnvironment, setCurrentEnvironment] = useState('');
   const [error, setError] = useState('');
@@ -47,23 +46,23 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
       return;
     }
 
-    setSelectedSystems({ system: currentSystem, environment: currentEnvironment });
+    setSelectedSystem({ system: currentSystem, environment: currentEnvironment });
     setError('');
   };
 
   const handleSubmit = async () => {
-  if (!selectedSystems) {
+  if (!selectedSystem) {
     setError('Selecione um sistema para continuar');
     return;
   }
 
   try {
     await api.patch(`/test-plans/${validationDraft.id}/`, {
-      system: selectedSystems.system,
-      environment: selectedSystems.environment,
+      system: selectedSystem.system,
+      environment: selectedSystem.environment,
     });
 
-    onNext([selectedSystems]);
+    onNext([selectedSystem]);
 
   } catch (error) {
     console.error("Erro ao atualizar TestPlan:", error);
@@ -73,7 +72,7 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
+      <Header user={user} onLogout={logout}/>
 
       <main className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto">
@@ -203,7 +202,7 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
             </div>
 
             {/* Lista de Sistemas Selecionados */}
-                {selectedSystems && (
+                {selectedSystem && (
                   <div className="mb-6">
                     <h3 className="font-medium text-gray-800 mb-3">Sistema Selecionado</h3>
 
@@ -211,16 +210,16 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
                       <div className="flex items-center gap-2">
                         <Check className="w-5 h-5 text-green-600" />
                         <span className="font-medium text-gray-800">
-                          {selectedSystems.system}
+                          {selectedSystem.system}
                         </span>
                         <span className="text-gray-500">-</span>
                         <span className="text-gray-600">
-                          {selectedSystems.environment}
+                          {selectedSystem.environment}
                         </span>
                       </div>
 
                       <button
-                        onClick={() => setSelectedSystems(null)}
+                        onClick={() => setSelectedSystem(null)}
                         className="text-red-600 hover:text-red-700 text-sm font-medium"
                       >
                         Remover
@@ -248,9 +247,9 @@ export default function SystemSelection({ validationDraft, onNext, onBack, user 
               <button
                 onClick={handleSubmit}
                 type="button"
-                disabled={!selectedSystems}
+                disabled={!selectedSystem}
                 className={`flex-1 py-3 rounded-md transition-colors font-medium ${
-                  !selectedSystems
+                  !selectedSystem
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-[#013171] text-white hover:bg-[#024a9f]'
                 }`}

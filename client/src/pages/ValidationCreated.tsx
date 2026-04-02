@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { User } from '../App';
+import api from '@/services/api'
 import { ValidationDraft } from './CreateValidation';
 import { SelectedSystem } from './SystemSelection';
 import Header from '../components/Header';
@@ -29,38 +30,53 @@ export default function ValidationCreated({
   user 
 }: ValidationCreatedProps) {
   const [keyCopied, setKeyCopied] = useState(false);
+  const [keys, setKeys] = useState<string[]>([]);
 
-  // Gerar chave de acesso única
-  const accessKey = validationDraft.accessKey;
+  useEffect(() =>{
+    generateKeys();
+  }, []);
 
-  const copyKeyToClipboard = () => {
+  const generateKeys = async () => {
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(accessKey);
-        setKeyCopied(true);
-        setTimeout(() => setKeyCopied(false), 2000);
+      let payload;
+
+      if (validationDraft.multiple_sessions) {
+        // múltiplas keys por setor
+        payload = {
+          keys: validationDraft.setores.map((setor: string) => ({
+            setor,
+            quantidade: validationDraft.quantidadePorSetor || 1
+          }))
+        };
       } else {
-        // Fallback
-        const textArea = document.createElement('textarea');
-        textArea.value = accessKey;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.select();
-        
-        try {
-          document.execCommand('copy');
-          setKeyCopied(true);
-          setTimeout(() => setKeyCopied(false), 2000);
-        } catch (err) {
-          console.error('Fallback: Could not copy text', err);
-        }
-        
-        document.body.removeChild(textArea);
+        // única key
+        payload = {
+          keys: [
+            {
+              setor: "default",
+              quantidade: 1
+            }
+          ]
+        };
       }
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
+
+      const response = await api.post(
+        `/test-plans/${validationDraft.id}/generate-keys/`,
+        payload
+      );
+
+      setKeys(response.data.keys);
+
+    } catch (error) {
+      console.error("Erro ao gerar keys", error);
     }
+  };
+
+  const copyAllKeys = () => {
+    const text = keys.join("\n");
+    navigator.clipboard.writeText(text);
+    setKeyCopied(true);
+    setTimeout(() => setKeyCopied(false), 2000);
   };
 
   return (
@@ -153,15 +169,18 @@ export default function ValidationCreated({
                 <h3 className="font-bold text-lg">Chave de Acesso</h3>
               </div>
               <div className="bg-white/10 backdrop-blur rounded-lg p-4 mb-4">
-                <input
-                  type="text"
-                  value={accessKey}
-                  readOnly
-                  className="w-full bg-transparent text-white font-mono text-xl text-center tracking-wider outline-none"
-                />
+              {keys.map((key, index) => (  
+                <div key={index} className="mb-3">
+                  <input
+                    type="text"
+                    value={key}
+                    readOnly
+                    className="w-full bg-transparent text-white font-mono text-lg text-center"
+                  />
+                </div>))}
               </div>
               <button
-                onClick={copyKeyToClipboard}
+                onClick={copyAllKeys}
                 className="w-full bg-white text-[#013171] px-6 py-3 rounded-md hover:bg-gray-100 transition-colors font-medium flex items-center justify-center gap-2"
               >
                 {keyCopied ? (
