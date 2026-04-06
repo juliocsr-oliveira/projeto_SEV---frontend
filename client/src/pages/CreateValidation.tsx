@@ -23,6 +23,9 @@ export interface ValidationDraft {
   id: string;
   name: string;
   description: string;
+  quantidadePorSetor?: number;
+  setores: string[];
+  multiples_sessions: boolean;
   type: string;
   division: string;
   responsible: string;
@@ -38,12 +41,14 @@ export default function CreateValidation({ onNext, onBack, user }: CreateValidat
     description: '',
     type: '',
     division: '',
-    isMultivalidation: false
+    isMultivalidation: false,
+    setores: [] as string[],
+    setor: ''
   });
 
-  isMultivalidation: Boolean;
-
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [currentSetor, setCurrentSetor] = useState('');
+  const [setoresSelecionados, setSetoresSelecionados] = useState<string[]>([]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -62,6 +67,16 @@ export default function CreateValidation({ onNext, onBack, user }: CreateValidat
 
     if (!formData.division) {
       newErrors.division = 'Divisão é obrigatória';
+    }
+
+    if (formData.isMultivalidation) {
+      if (setoresSelecionados.length === 0) {
+        newErrors.setores = 'Adicione pelo menos um setor';
+      }
+    } else {
+      if (!formData.setor) {
+        newErrors.setor = 'Setor é obrigatório';
+      }
     }
 
     setErrors(newErrors);
@@ -87,6 +102,21 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     console.log("createdPlan:", createdPlan);
 
+  const setores = formData.isMultivalidation
+    ? setoresSelecionados
+    : [formData.setor];
+
+  const sessionRequests = setores.map(setor =>
+    api.post("/validation-sessions/", {
+      test_plan_id: createdPlan.id,
+      setor: setor
+    })
+  );
+
+  const sessionsResponse = await Promise.all(sessionRequests);
+
+  console.log("Sessions criadas:", sessionsResponse);
+
     onNext({
       id: createdPlan.id, // UUID real
       name: createdPlan.name,
@@ -97,6 +127,8 @@ const handleSubmit = async (e: React.FormEvent) => {
       createdBy: createdPlan.created_by_name,
       createdAt: new Date(createdPlan.created_at),
       status: createdPlan.status,
+      multiples_sessions: formData.isMultivalidation,
+      setores: []
     });
 
   } catch (error: any) {
@@ -113,13 +145,32 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 };
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Limpar erro do campo ao digitar
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
+
+  const handleAddSetor = () => {
+  if (!currentSetor) return;
+
+  if (setoresSelecionados.includes(currentSetor)) {
+    setErrors(prev => ({
+      ...prev,
+      setores: 'Setor já adicionado'
+    }));
+    return;
+  }
+
+  setSetoresSelecionados(prev => [...prev, currentSetor]);
+  setCurrentSetor('');
+};
+
+  const handleRemoveSetor = (setor: string) => {
+  setSetoresSelecionados(prev => prev.filter(s => s !== setor));
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -275,19 +326,127 @@ const handleSubmit = async (e: React.FormEvent) => {
                   </div>
                 )}
               </div>
-              {/* Checkbox para validação múltipla */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="isMultivalidation"
-                  checked={formData.isMultivalidation}
-                  onChange={(e) => handleChange('isMultivalidation', e.target.checked)}
-                  className="form-checkbox h-5 w-5 text-[#013171] focus:ring-[#013171]"
-                />
-                <label htmlFor="isMultivalidation" className="block text-sm font-medium text-gray-700">
-                  Esta validação será realizada por múltiplos validadores
-                </label>
-              </div>
+              {/* Setor */}
+              {!formData.isMultivalidation && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Setor <span className="text-red-500">*</span>
+                  </label>
+
+                  <select
+                    value={formData.setor}
+                    onChange={(e) => handleChange('setor', e.target.value)}
+                    className={`w-full px-4 py-2 border ${
+                      errors.setor ? 'border-red-500' : 'border-gray-300'
+                    } rounded-md focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none`}
+                  >
+                    <option value="">Selecione um setor</option>
+                    <option value="TI">TI</option>
+                    <option value="Financeiro">Financeiro</option>
+                    <option value="Operações">Operações</option>
+                    <option value="RH">RH</option>
+                    <option value="Logística">Logística</option>
+                  </select>
+
+                  {errors.setor && (
+                    <div className="flex items-center gap-1 mt-1 text-red-500 text-sm">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.setor}
+                    </div>
+                  )}
+                </div>
+              )}
+                  {/* Checkbox (agora como bloco padrão de formulário) */}
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id="isMultivalidation"
+                        checked={formData.isMultivalidation}
+                        onChange={(e) => handleChange('isMultivalidation', e.target.checked)}
+                        className="h-5 w-5 text-[#013171] focus:ring-[#013171]"
+                      />
+                      <label htmlFor="isMultivalidation" className="text-sm font-medium text-gray-700">
+                        Múltiplas validações?
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* BLOCO ABAIXO, IGUAL OS OUTROS CAMPOS */}
+                  {formData.isMultivalidation && (
+                    <div className="space-y-6">
+                      
+                      {/* Campo igual "Divisão" */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Adicionar Setor
+                        </label>
+
+                        <select
+                          value={currentSetor}
+                          onChange={(e) => {
+                            setCurrentSetor(e.target.value);
+                            setErrors(prev => ({ ...prev, setores: '' }));
+                          }}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+                        >
+                          <option value="">Selecione um setor</option>
+                          <option value="TI">TI</option>
+                          <option value="Financeiro">Financeiro</option>
+                          <option value="RH">RH</option>
+                          <option value="Operações">Operações</option>
+                        </select>
+                      </div>
+
+                      {/* Botão FULL WIDTH */}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={handleAddSetor}
+                          className="w-full bg-[#013171] text-white py-2 rounded-md hover:bg-[#024a9f] transition-colors font-medium"
+                        >
+                          Adicionar Setor
+                        </button>
+                      </div>
+
+                      {/* Lista FULL WIDTH */}
+                      {setoresSelecionados.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-700 mb-2">
+                            Setores Selecionados
+                          </h3>
+
+                          <div className="space-y-2">
+                            {setoresSelecionados.map((setor) => (
+                              <div
+                                key={setor}
+                                className="w-full flex items-center justify-between border border-gray-300 rounded-md px-4 py-2 bg-gray-50"
+                              >
+                                <span className="text-gray-800">{setor}</span>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSetor(setor)}
+                                  className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                >
+                                  Remover
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Erro */}
+                      {errors.setores && (
+                        <div className="flex items-center gap-2 text-red-500 text-sm">
+                          <AlertCircle className="w-4 h-4" />
+                          {errors.setores}
+                        </div>
+                      )}
+                    </div>
+                  )}
+            
 
               {/* Informação de campos obrigatórios */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -324,4 +483,4 @@ const handleSubmit = async (e: React.FormEvent) => {
       </main>
     </div>
   );
-}
+};

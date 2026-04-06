@@ -129,10 +129,10 @@ const handleSubmit = async () => {
     const check = await api.get(`/test-plans/${validationDraft.id}/`);
     console.log("SETOR NO BACK:", check.data.setores);
 
-    const response = await api.post(`/test-plans/${validationDraft.id}/preparar/`);
-    const updatePlan = response.data;
+    await api.post(`/test-plans/${validationDraft.id}/preparar/`);
+    const response = await api.get(`/test-plans/${validationDraft.id}/`);
 
-    onNext(updatePlan);
+    onNext(response.data);
 
   } catch (error:any) {
     console.error("Erro ao adicionar campo:", error);
