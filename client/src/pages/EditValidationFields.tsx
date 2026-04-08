@@ -28,7 +28,7 @@ export default function EditValidationFields({
   onBack, 
   user 
 }: EditValidationFieldsProps) {
-  const { User, isAuthenticated, logout } = useAuth();
+  const { user: authUser, logout } = useAuth();
   const [fields, setFields] = useState<ValidationField[]>([]);
   const [selectedSetor, setSelectedSetor] = useState('');
   const [newFieldName, setNewFieldName] = useState('');
@@ -36,23 +36,20 @@ export default function EditValidationFields({
   const [testPlan, setTestPlan] = useState<any>(null);
 
   const fetchFields = async () => {
-    useEffect(() => {
-      if (testPlan?.setores?.length > 0) {
-        setSelectedSetor(testPlan.setores[0]);
-      }
-    }, [testPlan]);
+    try {
+      if (!selectedSetor) return;
+      setFields([]);
 
-  try {
-
-    const response = await api.get("/test-case/", {
-      params: {
-        test_plan: validationDraft.id,
-        setor: selectedSetor,
-        active: true
-      }
-    });
+      const response = await api.get("/test-case/", {
+        params: {
+          test_plan: validationDraft.id,
+          setor: selectedSetor,
+          active: true
+        }
+      });
 
       setFields(response.data.results || response.data);
+    
   } catch (error) {
     console.error("Erro ao buscar campos", error);
   }
@@ -60,6 +57,7 @@ export default function EditValidationFields({
 
 useEffect(() => {
   if (validationDraft?.id && selectedSetor) {
+    setFields([]);
     fetchFields();
   }
 }, [validationDraft.id, selectedSetor]);
@@ -78,6 +76,12 @@ useEffect(() => {
     fetchTestPlan();
   }
 }, [validationDraft.id]);
+
+useEffect(() => {
+  if (testPlan?.setores?.length > 0) {
+    setSelectedSetor(testPlan.setores[0]);
+  }
+}, [testPlan]);
 
 const handleAddField = async () => {
   try {
@@ -141,10 +145,12 @@ const handleSubmit = async () => {
     }
 
       const check = await api.get(`/test-plans/${validationDraft.id}/`);
-      console.log("SETOR NO BACK:", check.data.setores);
+      console.log("ANTES DE PREPARAR:", check.data.setores);
 
       await api.post(`/test-plans/${validationDraft.id}/preparar/`);
       const response = await api.get(`/test-plans/${validationDraft.id}/`);
+      console.log("DEPOIS DE PREPARAR:", response.data.setores);
+
 
       onNext(response.data);
 
@@ -163,7 +169,7 @@ const handleSubmit = async () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
+      <Header user={user} onLogout={(logout)}/>
 
       <main className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto">
@@ -214,25 +220,33 @@ const handleSubmit = async () => {
               Configure os campos que serão validados para <strong>{validationDraft.name}</strong>
             </p>
           </div>
-          {testPlan && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Setor
-              </label>
+              {testPlan && (
+                <div className="bg-white rounded-lg shadow-sm p-6 mb-8 border-l-4 border-[#013171]">
+                  
+                  <h2 className="text-lg font-semibold text-[#013171] mb-4">
+                    Selecionar Setor
+                  </h2>
 
-            <select
-              value={selectedSetor}
-              onChange={(e) => setSelectedSetor(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
-            >
-              {testPlan?.setores?.map((setor) => (
-                <option key={setor} value={setor}>
-                  {setor}
-                </option>
-              ))}
-            </select>
-          </div>
-          )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Setor
+                    </label>
+
+                    <select
+                      value={selectedSetor}
+                      onChange={(e) => setSelectedSetor(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+                    >
+                      {testPlan.setores.map((setor) => (
+                        <option key={setor} value={setor}>
+                          {setor}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                </div>
+              )}
 
           {/* Informações da Validação */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8 border-l-4 border-[#013171]">

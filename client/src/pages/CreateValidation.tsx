@@ -88,6 +88,10 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   if (!validateForm()) return;
 
+    const setores = formData.isMultivalidation
+      ? setoresSelecionados
+      : [formData.setor];
+      
   try {
     const response = await api.post("/test-plans/", {
       name: formData.name,
@@ -95,7 +99,8 @@ const handleSubmit = async (e: React.FormEvent) => {
       division: formData.division,
       validation_type: formData.type,
       is_multivalidation: formData.isMultivalidation,
-      responsible: user.id
+      responsible: user.id,
+      setores: setores
     });
 
     const createdPlan = response.data;
@@ -420,7 +425,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                             {setoresSelecionados.map((setor) => (
                               <div
                                 key={setor}
-                                className="w-full flex items-center justify-between border border-gray-300 rounded-md px-4 py-2 bg-gray-50"
+                                className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3"
                               >
                                 <span className="text-gray-800">{setor}</span>
 
