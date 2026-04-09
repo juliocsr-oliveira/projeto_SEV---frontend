@@ -31,16 +31,49 @@ export default function ValidationCreated({
 }: ValidationCreatedProps) {
   const [keyCopied, setKeyCopied] = useState(false);
   const [keys, setKeys] = useState<string[]>([]);
+  const [keysBySetor, setKeysBySetor] = useState<Record<string, string[]>>({});
+  const [selectedSetor, setSelectedSetor] = useState<string>('');
+  const [testPlan, setTestPlan] = useState<any>(null);
+  const [keysGenerated, setKeysGenerated] = useState(false);
 
-  useEffect(() =>{
+  useEffect(() => {
+    if (!validationDraft?.id) return;
+
+    if (
+      !validationDraft?.setores ||
+      validationDraft.setores.length === 0
+    ) return;
+
+    if (keysGenerated) return;
+
+    console.log("🔥 DISPARANDO generateKeys COM:", validationDraft);
+
     generateKeys();
+    setKeysGenerated(true);
+
+  }, [
+    validationDraft.id,
+    validationDraft.setores?.join(',')
+  ]);
+
+  useEffect(() => {
+    const fetchTestPlan = async () => {
+      try {
+        const response = await api.get(`/test-plans/${validationDraft.id}/`);
+        setTestPlan(response.data);
+      } catch (error) {
+        console.error("Erro ao carregar test-plan", error);
+      }
+    };
+
+    fetchTestPlan();
   }, []);
 
   const generateKeys = async () => {
     try {
       let payload;
 
-      if (validationDraft.multiple_sessions) {
+      if (validationDraft.setores?.length > 0) {
         // múltiplas keys por setor
         payload = {
           keys: validationDraft.setores.map((setor: string) => ({
@@ -65,12 +98,35 @@ export default function ValidationCreated({
         payload
       );
 
-      setKeys(response.data.keys);
+      const result: Record<string, string[]> = {};
 
-    } catch (error) {
+      response.data.keys.forEach((keyObj: any) => {
+        const setor = keyObj.setor || "Sem setor";
+
+        if (!result[setor]) {
+          result[setor] = [];
+        }
+
+        result[setor].push(keyObj.key);
+      });
+
+      setKeysBySetor(result);
+
+      setKeys(Object.values(result).flat());
+
+      const firstSetor = Object.keys(result)[0];
+      if (firstSetor) {
+        setSelectedSetor(firstSetor);
+      }
+
+    } catch (error: any) {
       console.error("Erro ao gerar keys", error);
+
+      if (error.response) {
+        console.log("RETORNO API:", error.response.data);
+      }
     }
-  };
+  }; 
 
   const copyAllKeys = () => {
     const text = keys.join("\n");
@@ -134,16 +190,28 @@ export default function ValidationCreated({
                 </div>
                 <div>
                   <span className="text-gray-600">Tipo:</span>
-                  <p className="font-medium text-gray-800">{validationDraft.type}</p>
+                  <p className="font-medium text-gray-800">{testPlan?.validation_type}</p>
                 </div>
                 <div>
                   <span className="text-gray-600">Divisão:</span>
-                  <p className="font-medium text-gray-800">{validationDraft.division}</p>
+                  <p className="font-medium text-gray-800">{testPlan?.division}</p>
                 </div>
                 <div>
                   <span className="text-gray-600">Criado por:</span>
-                  <p className="font-medium text-gray-800">{validationDraft.createdBy}</p>
+                  <p className="font-medium text-gray-800">{testPlan?.created_by_name}</p>
                 </div>
+                <div>
+                    <span className="text-gray-600">Setores:</span>
+                    <p className="font-medium text-gray-800">
+                      {validationDraft.setores.join(', ')}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Qtd. validações:</span>
+                    <p className="font-medium text-gray-800">
+                      {validationDraft.setores.length}
+                    </p>
+                  </div>
               </div>
             </div>
 
@@ -161,6 +229,34 @@ export default function ValidationCreated({
                 ))}
               </div>
             </div>
+
+            {/*selecionar por setor */}
+              <select
+                value={selectedSetor}
+                onChange={(e) => setSelectedSetor(e.target.value)}
+                className="w-full mb-4 px-4 py-2 border rounded-md"
+              >
+                {Object.keys(keysBySetor).length === 0 ? (
+                  <option>Carregando setores...</option>
+                ) : (
+                  Object.keys(keysBySetor).map((setor) => (
+                    <option key={setor} value={setor}>
+                      {setor}
+                    </option>
+                  ))
+                )}
+              </select>
+
+            {/* selecionar por key */}
+            {selectedSetor && keysBySetor[selectedSetor]?.map((key, index) => (
+                <div key={index} className="mb-2">
+                  <input
+                    value={key}
+                    readOnly
+                    className="w-full text-center font-mono"
+                  />
+                </div>
+              ))}
 
             {/* Chave de Acesso */}
             <div className="bg-gradient-to-r from-[#013171] to-[#024a9f] rounded-lg p-6 mb-6 text-white">
@@ -238,4 +334,4 @@ export default function ValidationCreated({
       </main>
     </div>
   );
-}
+};

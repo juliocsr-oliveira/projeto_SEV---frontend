@@ -30,6 +30,7 @@ export default function EditValidationFields({
 }: EditValidationFieldsProps) {
   const { user: authUser, logout } = useAuth();
   const [fields, setFields] = useState<ValidationField[]>([]);
+  const [loading, seetLoading] = useState(true);
   const [selectedSetor, setSelectedSetor] = useState('');
   const [newFieldName, setNewFieldName] = useState('');
   const [error, setError] = useState('');
@@ -66,9 +67,17 @@ useEffect(() => {
   const fetchTestPlan = async () => {
     try {
       const response = await api.get(`/test-plans/${validationDraft.id}/`);
+
       setTestPlan(response.data);
+
+      if (response.data.setores?.length > 0) {
+        setSelectedSetor(response.data.setores[0]);
+      }
+
     } catch (error) {
       console.error("Erro ao carregar test-plan", error);
+    } finally {
+      seetLoading(false);
     }
   };
 
@@ -88,15 +97,17 @@ const handleAddField = async () => {
     await api.post("/test-case/", {
       description: newFieldName,
       test_plan: validationDraft.id,
-      setor: selectedSetor
+      setor: selectedSetor,
+      active: true
     });
 
     setNewFieldName("");
 
     fetchFields();
-
   } catch (error) {
-    console.error("Erro ao adicionar campo:", error);
+    console.error("Erro ao adicionar campo:", error.response?.data);
+    console.log("ENVIANDO SETOR:", selectedSetor);
+    console.log("FIELDS API:", Response.data);
   }
 };
 
@@ -145,12 +156,10 @@ const handleSubmit = async () => {
     }
 
       const check = await api.get(`/test-plans/${validationDraft.id}/`);
-      console.log("ANTES DE PREPARAR:", check.data.setores);
+      console.log("SETOR NO BACK:", check.data.setores);
 
       await api.post(`/test-plans/${validationDraft.id}/preparar/`);
       const response = await api.get(`/test-plans/${validationDraft.id}/`);
-      console.log("DEPOIS DE PREPARAR:", response.data.setores);
-
 
       onNext(response.data);
 

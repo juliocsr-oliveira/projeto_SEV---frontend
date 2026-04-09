@@ -107,10 +107,6 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     console.log("createdPlan:", createdPlan);
 
-  const setores = formData.isMultivalidation
-    ? setoresSelecionados
-    : [formData.setor];
-
   const sessionRequests = setores.map(setor =>
     api.post("/validation-sessions/", {
       test_plan_id: createdPlan.id,
@@ -133,7 +129,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       createdAt: new Date(createdPlan.created_at),
       status: createdPlan.status,
       multiples_sessions: formData.isMultivalidation,
-      setores: []
+      setores: setores
     });
 
   } catch (error: any) {
