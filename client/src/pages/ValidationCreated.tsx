@@ -30,31 +30,9 @@ export default function ValidationCreated({
   user 
 }: ValidationCreatedProps) {
   const [keyCopied, setKeyCopied] = useState(false);
-  const [keys, setKeys] = useState<string[]>([]);
   const [keysBySetor, setKeysBySetor] = useState<Record<string, string[]>>({});
   const [selectedSetor, setSelectedSetor] = useState<string>('');
   const [testPlan, setTestPlan] = useState<any>(null);
-  const [keysGenerated, setKeysGenerated] = useState(false);
-
-  useEffect(() => {
-    if (!validationDraft?.id) return;
-
-    if (
-      !validationDraft?.setores ||
-      validationDraft.setores.length === 0
-    ) return;
-
-    if (keysGenerated) return;
-
-    console.log("🔥 DISPARANDO generateKeys COM:", validationDraft);
-
-    generateKeys();
-    setKeysGenerated(true);
-
-  }, [
-    validationDraft.id,
-    validationDraft.setores?.join(',')
-  ]);
 
   useEffect(() => {
     const fetchTestPlan = async () => {
@@ -69,71 +47,39 @@ export default function ValidationCreated({
     fetchTestPlan();
   }, []);
 
-  const generateKeys = async () => {
-    try {
-      let payload;
+  useEffect(() => {
+  if (!testPlan?.access_keys) return;
 
-      if (validationDraft.setores?.length > 0) {
-        // múltiplas keys por setor
-        payload = {
-          keys: validationDraft.setores.map((setor: string) => ({
-            setor,
-            quantidade: validationDraft.quantidadePorSetor || 1
-          }))
-        };
-      } else {
-        // única key
-        payload = {
-          keys: [
-            {
-              setor: "default",
-              quantidade: 1
-            }
-          ]
-        };
-      }
+  const result: Record<string, string[]> = {};
 
-      const response = await api.post(
-        `/test-plans/${validationDraft.id}/generate-keys/`,
-        payload
-      );
+  Object.entries(testPlan.access_keys).forEach(([setor, keys]: any) => {
+    if (setor === 'default') return;
+    result[setor] = keys.map((k: any) => k.key);
+  });
 
-      const result: Record<string, string[]> = {};
+  setKeysBySetor(result);
 
-      response.data.keys.forEach((keyObj: any) => {
-        const setor = keyObj.setor || "Sem setor";
+  const firstSetor = Object.keys(result)[0];
+  if (firstSetor) {
+    setSelectedSetor(firstSetor);
+  }
 
-        if (!result[setor]) {
-          result[setor] = [];
-        }
+}, [testPlan]);
 
-        result[setor].push(keyObj.key);
-      });
+  
+const copyAllKeys = () => {
+  if (!selectedSetor) return;
 
-      setKeysBySetor(result);
+  const text = keysBySetor[selectedSetor]?.join("\n") || "";
 
-      setKeys(Object.values(result).flat());
+  navigator.clipboard.writeText(text);
+  setKeyCopied(true);
+  setTimeout(() => setKeyCopied(false), 2000);
+};
 
-      const firstSetor = Object.keys(result)[0];
-      if (firstSetor) {
-        setSelectedSetor(firstSetor);
-      }
-
-    } catch (error: any) {
-      console.error("Erro ao gerar keys", error);
-
-      if (error.response) {
-        console.log("RETORNO API:", error.response.data);
-      }
-    }
-  }; 
-
-  const copyAllKeys = () => {
-    const text = keys.join("\n");
-    navigator.clipboard.writeText(text);
-    setKeyCopied(true);
-    setTimeout(() => setKeyCopied(false), 2000);
-  };
+  const currentKey = selectedSetor
+    ? keysBySetor[selectedSetor]?.[0]
+    : "";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -247,51 +193,47 @@ export default function ValidationCreated({
                 )}
               </select>
 
-            {/* selecionar por key */}
-            {selectedSetor && keysBySetor[selectedSetor]?.map((key, index) => (
-                <div key={index} className="mb-2">
-                  <input
-                    value={key}
-                    readOnly
-                    className="w-full text-center font-mono"
-                  />
-                </div>
-              ))}
-
             {/* Chave de Acesso */}
-            <div className="bg-gradient-to-r from-[#013171] to-[#024a9f] rounded-lg p-6 mb-6 text-white">
-              <div className="flex items-center gap-3 mb-4">
-                <Key className="w-6 h-6" />
-                <h3 className="font-bold text-lg">Chave de Acesso</h3>
-              </div>
-              <div className="bg-white/10 backdrop-blur rounded-lg p-4 mb-4">
-              {keys.map((key, index) => (  
-                <div key={index} className="mb-3">
+              <div className="bg-gradient-to-r from-[#013171] to-[#024a9f] rounded-lg p-6 mb-6 text-white">
+                <div className="flex items-center gap-3 mb-4">
+                  <Key className="w-6 h-6" />
+                  <h3 className="font-bold text-lg">
+                    Chave de Acesso {selectedSetor && `- ${selectedSetor}`}
+                  </h3>
+                </div>
+
+                <div className="bg-white/10 backdrop-blur rounded-lg p-4 mb-4">
                   <input
                     type="text"
-                    value={key}
+                    value={currentKey || "Nenhuma chave disponível"}
                     readOnly
-                    className="w-full bg-transparent text-white font-mono text-lg text-center"
+                    className="w-full bg-transparent text-white font-mono text-xl text-center tracking-wider outline-none"
                   />
-                </div>))}
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (!currentKey) return;
+
+                    navigator.clipboard.writeText(currentKey);
+                    setKeyCopied(true);
+                    setTimeout(() => setKeyCopied(false), 2000);
+                  }}
+                  className="w-full bg-white text-[#013171] px-6 py-3 rounded-md hover:bg-gray-100 transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  {keyCopied ? (
+                    <>
+                      <Check className="w-5 h-5" />
+                      Chave Copiada!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-5 h-5" />
+                      Copiar Chave
+                    </>
+                  )}
+                </button>
               </div>
-              <button
-                onClick={copyAllKeys}
-                className="w-full bg-white text-[#013171] px-6 py-3 rounded-md hover:bg-gray-100 transition-colors font-medium flex items-center justify-center gap-2"
-              >
-                {keyCopied ? (
-                  <>
-                    <Check className="w-5 h-5" />
-                    Chave Copiada!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-5 h-5" />
-                    Copiar Chave
-                  </>
-                )}
-              </button>
-            </div>
 
             {/* Instruções */}
             <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg p-4 mb-6">
