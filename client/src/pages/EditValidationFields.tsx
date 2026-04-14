@@ -159,6 +159,9 @@ const handleSubmit = async () => {
       console.log("SETOR NO BACK:", check.data.setores);
 
       await api.post(`/test-plans/${validationDraft.id}/preparar/`);
+      await api.post(`/test-plans/${validationDraft.id}/generate-keys/`, {
+        keys: testPlan.setores
+      });
       const response = await api.get(`/test-plans/${validationDraft.id}/`);
 
       onNext(response.data);
