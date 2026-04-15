@@ -22,46 +22,16 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   try {
     // 1️⃣ Buscar Test Plan
-    const planResponse = await api.get(`/test-plans/by-key/${accessKey}/`);
-    const plan = planResponse.data;
+    const response = await api.post("/validation-sessions/enter-with-key/", {
+      key: accessKey
+    });
 
-    let session;
+    const sessionDetail = await api.get(
+      `/validation-sessions/${response.data.session_id}/`
+    );
 
-    try {
-      // 2️⃣ Criar sessão
-      const response = await api.post("/validation-sessions/", {
-        test_plan: plan.id
-      });
-
-      // 3️⃣ Buscar sessão completa (com executions)
-      const sessionDetail = await api.get(
-        `/validation-sessions/${response.data.id}/`
-      );
-
-      session = sessionDetail.data;
-
-    } catch (error: any) {
-
-      if (error.response?.status === 400 || error.response?.status === 409) {
-
-        // 4️⃣ Buscar sessão existente
-        const existingSession = await api.get(
-          `/validation-sessions/?test_plan=${plan.id}&status=IN_PROGRESS`
-        );
-
-        const existing = existingSession.data[0];
-
-        // 🔥 buscar detalhe dela também
-        const sessionDetail = await api.get(
-          `/validation-sessions/${existing.id}/`
-        );
-
-        session = sessionDetail.data;
-
-      } else {
-        throw error;
-      }
-    }
+    const session = sessionDetail.data;
+    const plan = session.test_plan;
 
     // 🔥 AQUI ESTÁ A CORREÇÃO PRINCIPAL
     const validationSession: ValidationSession = {
