@@ -20,7 +20,7 @@ export default function PreviousValidations({ onBack, user }: PreviousValidation
     environment: '',
     user: '',
     status: '',
-    gmud: ''
+    setor: ''
   });
   const [searchDate, setSearchDate] = useState('');
   const [selectedValidation, setSelectedValidation] = useState<ValidationSession | null>(null);
@@ -34,13 +34,17 @@ useEffect(() => {
       console.log(response.data);
       console.log(response.data.results);
       
-      const mapped = response.data.results.map((session: any) => ({
+    const mapped = response.data.results.map((session: any) => {
+      const isFinished = ['FINISHED', 'COMPLETED', 'APPROVED'].includes(session.status);
+
+      return {
         id: session.id,
-        system: session.test_plan_system || '', // ajustar depois no backend
+        accessKey: session.access_key,
+        system: session.test_plan_system || '',
         environment: session.test_plan_environment || '',
-        user: session.started_by_name || `User ${session.started_by}`, 
-        status: session.status === 'APPROVED' ? 'concluida' : 'em_andamento',
-        gmud: session.gmud_version || '',
+        user: session.started_by_name || `User ${session.started_by}`,
+        status: isFinished ? 'concluida' : 'em_andamento',
+        setor: session.setor || '',
         startTime: session.started_at,
         items: session.executions?.map((exec: any) => ({
           id: exec.id,
@@ -49,7 +53,8 @@ useEffect(() => {
           comment: exec.comment,
           evidence: exec.evidences?.[0]?.file || null
         })) || []
-      }));
+      };
+    });
 
       setValidations(mapped);
       setFilteredValidations(mapped);
@@ -87,8 +92,8 @@ useEffect(() => {
     if (filters.status) {
       filtered = filtered.filter(v => v.status === filters.status);
     }
-    if (filters.gmud) {
-      filtered = filtered.filter(v => v.gmud?.toLowerCase().includes(filters.gmud.toLowerCase()));
+    if (filters.setor) {
+      filtered = filtered.filter(v => v.setor?.toLowerCase().includes(filters.setor.toLowerCase()));
     }
     if (searchDate) {
       filtered = filtered.filter(v => {
@@ -116,7 +121,7 @@ useEffect(() => {
       environment: '',
       user: '',
       status: '',
-      gmud: ''
+      setor: ''
     });
     setSearchDate('');
   };
@@ -124,11 +129,15 @@ useEffect(() => {
   const handleOpen = async (id: number) => {
   try {
     const response = await api.get(`/validation-sessions/${id}/`);
+    const setorAtual = response.data.setor || '';
+    const KeyDoSetor = response.data.access_keys?.[setorAtual]?.[0]?.key || '';
 
     const mapped = {
       id: response.data.id,
+      accessKey: KeyDoSetor,
       system: response.data.test_plan_system,
       environment: response.data.test_plan_environment,
+      setor: response.data.setor || '',
       user: response.data.started_by_name || `User ${response.data.started_by}`,
       startTime: response.data.started_at,
       items: response.data.executions?.map((exec: any) => ({
@@ -314,9 +323,9 @@ useEffect(() => {
 
               <input
                 type="text"
-                value={filters.gmud}
-                onChange={(e) => setFilters({ ...filters, gmud: e.target.value })}
-                placeholder="GMUD"
+                value={filters.setor}
+                onChange={(e) => setFilters({ ...filters, setor: e.target.value })}
+                placeholder="Setor"
                 className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
               />
             </div>
@@ -339,7 +348,7 @@ useEffect(() => {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Sistema</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Ambiente</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Usuário</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">GMUD</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Setor</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Ações</th>
                 </tr>
@@ -372,7 +381,7 @@ useEffect(() => {
                         {validation.user}
                       </td>
                       <td className="px-6 py-4 border-b border-gray-200 text-sm">
-                        {validation.gmud || '-'}
+                        {validation.setor || '-'}
                       </td>
                       <td className="px-6 py-4 border-b border-gray-200 text-sm">
                           <span className={`px-2 py-1 rounded text-xs ${badge.className}`}>
@@ -417,6 +426,12 @@ useEffect(() => {
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="bg-[#013171] text-white p-6 sticky top-0">
               <h3 className="text-xl font-bold mb-2">Detalhes da Validação</h3>
+
+              {selectedValidation.accessKey &&(
+                <span className="inline-block mt-2 text-sm bg-white/20 px-3 py-1 rounded">
+                  {selectedValidation.accessKey}
+                </span>
+              )}
             </div>
 
             <div className="p-6 space-y-6">
@@ -431,6 +446,10 @@ useEffect(() => {
                 <div>
                   <span className="text-gray-600">Executado por:</span>
                   <p className="font-medium">{selectedValidation.user}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Setor:</span>
+                  <p className="font-medium">{selectedValidation.setor || '-'}</p>
                 </div>
                 <div>
                   <span className="text-gray-600">Data:</span>
@@ -460,9 +479,9 @@ useEffect(() => {
                           <div className="text-2xl font-bold text-yellow-600">
                             {stats.notApplicable}
                           </div>
-                          <div className="text-xs text-gray-600">Não se aplica</div>
-                        </div>
-                      </div>
+                          <div className="text-xs text-gray-600">Não se aplica</div>                          
+                        </div>                        
+                      </div>        
                     </div>
 
               <div>

@@ -234,6 +234,10 @@ const handleCommentChange = async (itemId: string, comment: string) => {
                 <span className="text-blue-200">Divisão:</span>
                 <p className="font-medium">{validation.division}</p>
               </div>
+              <div>
+                <span className="text-blue-200">Setor:</span>
+                <p className="font-medium">{validation.setor || '-'}</p>
+              </div>
               {validation.gmudNumber && (
                 <div>
                   <span className="text-blue-200">GMUD:</span>

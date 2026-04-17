@@ -31,6 +31,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     );
 
     const session = sessionDetail.data;
+    console.log("SESSION COMPLETA:", session);
     const plan = session.test_plan;
 
     // 🔥 AQUI ESTÁ A CORREÇÃO PRINCIPAL
@@ -38,9 +39,10 @@ const handleSubmit = async (e: React.FormEvent) => {
       sessionId: session.id,
       user: user?.name || '',
       department: user?.department || '',
-      division: plan.division || '',
-      system: plan.system || '',
-      environment: plan.environment || '',
+      division: session.test_plan_division ?? '',
+      system: session.test_plan_system || '',
+      environment: session.test_plan_environment || '',
+      setor: session.setor || '',
       startTime: new Date(session.started_at),
 
       // ✅ AGORA USANDO executions
@@ -55,7 +57,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       })),
 
       status: session.status,
-      validationName: plan.name,
+      validationName: session.test_plan_name,
       validationType: plan.validation_type,
       responsible: plan.responsible_name,
       validationStatus: plan.status

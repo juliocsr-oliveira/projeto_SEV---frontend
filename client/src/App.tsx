@@ -42,6 +42,7 @@ export interface ValidationSession {
   division: string;
   system: string;
   environment: string;
+  setor: string;
   gmudNumber?: string;
   accessKey?: string;
   startTime: Date;
