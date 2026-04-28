@@ -130,7 +130,7 @@ useEffect(() => {
   try {
     const response = await api.get(`/validation-sessions/${id}/`);
     const setorAtual = response.data.setor || '';
-    const KeyDoSetor = response.data.access_keys?.[setorAtual]?.[0]?.key || '';
+    const KeyDoSetor = response.data.access_key || '';
 
     const mapped = {
       id: response.data.id,

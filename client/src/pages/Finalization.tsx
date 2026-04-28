@@ -112,7 +112,7 @@ return (
                 <CheckCircle className="w-10 h-10 text-green-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                Finalização da Validação
+                Validação finalizada!
               </h2>
               <p className="text-gray-600">
                 Revise os dados e confirme para exportar
@@ -166,7 +166,7 @@ return (
 
                   <div>
                     <span className="text-gray-600"> Criado por:</span>
-                    <p className="font-semibold">{validation.responsible || '-'}</p>
+                    <p className="font-semibold">{validationData?.test_plan_responsible_name || '-'}</p>
                   </div>
 
                   {validation.testerName && (
