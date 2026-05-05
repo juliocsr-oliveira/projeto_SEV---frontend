@@ -34,7 +34,11 @@ useEffect(() => {
       console.log(response.data);
       console.log(response.data.results);
       
-    const mapped = response.data.results.map((session: any) => {
+  const mapped = await Promise.all(
+    response.data.results.map(async (session: any) => {
+      const planResponse = await api.get(`/test-plans/${session.test_plan}/`);
+      const plan = planResponse.data;
+
       const isFinished = ['FINISHED', 'COMPLETED', 'APPROVED'].includes(session.status);
 
       return {
@@ -42,7 +46,9 @@ useEffect(() => {
         accessKey: session.access_key,
         system: session.test_plan_system || '',
         environment: session.test_plan_environment || '',
-        user: session.started_by_name || `User ${session.started_by}`,
+        createdBy: plan.created_by_name || '-',
+        executedBy: session.started_by_name || '-',
+        user: session.created_by_name || '-',
         status: isFinished ? 'concluida' : 'em_andamento',
         setor: session.setor || '',
         startTime: session.started_at,
@@ -54,7 +60,8 @@ useEffect(() => {
           evidence: exec.evidences?.[0]?.file || null
         })) || []
       };
-    });
+    })  
+  );
 
       setValidations(mapped);
       setFilteredValidations(mapped);
@@ -139,6 +146,7 @@ useEffect(() => {
       environment: response.data.test_plan_environment,
       setor: response.data.setor || '',
       user: response.data.started_by_name || `User ${response.data.started_by}`,
+      executedBy: response.data.started_by_name || '-',
       startTime: response.data.started_at,
       items: response.data.executions?.map((exec: any) => ({
         id: exec.id,
@@ -347,7 +355,7 @@ useEffect(() => {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Data</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Sistema</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Ambiente</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Usuário</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Criado por</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Setor</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Ações</th>
@@ -378,7 +386,7 @@ useEffect(() => {
                         </span>
                       </td>
                       <td className="px-6 py-4 border-b border-gray-200 text-sm">
-                        {validation.user}
+                        {validation.createdBy}
                       </td>
                       <td className="px-6 py-4 border-b border-gray-200 text-sm">
                         {validation.setor || '-'}
@@ -445,7 +453,7 @@ useEffect(() => {
                 </div>
                 <div>
                   <span className="text-gray-600">Executado por:</span>
-                  <p className="font-medium">{selectedValidation.user}</p>
+                  <p className="font-medium">{selectedValidation.executedBy}</p>
                 </div>
                 <div>
                   <span className="text-gray-600">Setor:</span>

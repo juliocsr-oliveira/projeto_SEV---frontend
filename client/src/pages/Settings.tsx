@@ -15,7 +15,7 @@ interface SettingsProps {
 }
 
 export default function Settings({ onBack, user }: SettingsProps) {
-  const [activeTab, setActiveTab] = useState<'structure' | 'users' | 'knowledge'>('structure');
+  const [activeTab, setActiveTab] = useState<'users'>('users');
   const [structureVersion, setStructureVersion] = useState('2.1.0');
   const [showNewItemForm, setShowNewItemForm] = useState(false);
   const [newItemText, setNewItemText] = useState('');
@@ -32,13 +32,6 @@ export default function Settings({ onBack, user }: SettingsProps) {
       icon: Users,
       show: isAdmin
     },
-    {
-      id: 'knowledge' as const,
-      title: 'Base de Conhecimento',
-      description: 'Editar conteúdo da base de conhecimento',
-      icon: BookOpen,
-      show: true
-    }
   ];
 
   const [validationItems, setValidationItems] = useState([]);

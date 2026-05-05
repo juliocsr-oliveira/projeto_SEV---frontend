@@ -44,14 +44,22 @@ export default function Home({ onNavigate }: HomeProps) {
     const buttons = [];
 
     // TESTADOR
-    if (user.role === 'TESTADOR') {
+    if (user.role === 'TESTADOR', 'AUDITOR', 'ADMIN') {
       buttons.push({
         id: 'start',
         title: 'Iniciar Validação',
         description: 'Acessar validação com chave fornecida',
         icon: CheckCircle2,
         screen: 'enter-key' as Screen,
-      });
+      },
+      {
+        id: 'history',
+        title: 'Validações Anteriores',
+        description: 'Consultar histórico e fazer download',
+        icon: FileText,
+        screen: 'previous-validations' as Screen,
+      }
+      );
     }
 
     // AUDITOR
@@ -87,7 +95,7 @@ export default function Home({ onNavigate }: HomeProps) {
         {
           id: 'settings',
           title: 'Configurações',
-          description: 'Administrar usuários e extrair logs',
+          description: 'Administrar usuários',
           icon: Settings,
           screen: 'settings' as Screen,
         }
@@ -96,20 +104,6 @@ export default function Home({ onNavigate }: HomeProps) {
 
     // Botões comuns a todos
     buttons.push(
-      {
-        id: 'history',
-        title: 'Validações Anteriores',
-        description: 'Consultar histórico e fazer download',
-        icon: FileText,
-        screen: 'previous-validations' as Screen,
-      },
-      {
-        id: 'knowledge',
-        title: 'Base de Conhecimento',
-        description: 'Guias, instruções e boas práticas',
-        icon: BookOpen,
-        screen: 'knowledge-base' as Screen,
-      }
     );
 
     return buttons;

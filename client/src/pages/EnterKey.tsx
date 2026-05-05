@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { User, ValidationSession } from '@/App';
 import Header from '@/components/Header';
 import { ArrowLeft, Key, AlertCircle } from 'lucide-react';
+import { set } from 'react-hook-form';
 
 interface EnterKeyProps {
   onBack: () => void;
@@ -13,6 +14,7 @@ interface EnterKeyProps {
 export default function EnterKey({ onBack, onSuccess, user }: EnterKeyProps) {
   const [accessKey, setAccessKey] = useState('');
   const [error, setError] = useState('');
+  const [errorType, setErrorType] = useState<'error' | 'warning'>('error');
   const [isValidating, setIsValidating] = useState(false);
 
 const handleSubmit = async (e: React.FormEvent) => {
@@ -66,14 +68,20 @@ const handleSubmit = async (e: React.FormEvent) => {
     onSuccess(validationSession);
 
   } catch (error: any) {
-    console.log("ERRO COMPLETO:", error);
-    console.log("ERRO RESPONSE:", error?.response);
-    console.log("DATA:", error?.response?.data);
+    const message = error?.response?.data?.error || "Erro ao validar a chave.";
 
-    setError('Chave inválida ou validação não encontrada');
+    if (message.toLowerCase().includes("Outro usuário")) {
+      setErrorType('warning');
+    } else {
+      setErrorType('error');
+    }
+     
+    setError(message);
+  
   } finally {
     setIsValidating(false);
-  }
+  }  
+
 };
 
   return (
@@ -127,11 +135,41 @@ const handleSubmit = async (e: React.FormEvent) => {
               </div>
 
               {error && (
-                <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-lg p-4">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div
+                  className={`flex items-start gap-3 rounded-lg p-4 border ${
+                    errorType === 'warning'
+                      ? 'bg-orange-50 border-orange-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}
+                >
+                  <AlertCircle
+                    className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                      errorType === 'warning'
+                        ? 'text-orange-600'
+                        : 'text-red-600'
+                    }`}
+                  />
                   <div>
-                    <p className="text-sm font-medium text-red-800">Erro ao validar chave</p>
-                    <p className="text-sm text-red-700 mt-1">{error}</p>
+                    <p
+                      className={`text-sm font-medium ${
+                        errorType === 'warning'
+                          ? 'text-orange-800'
+                          : 'text-red-800'
+                      }`}
+                    >
+                      {errorType === 'warning'
+                        ? 'Validação em andamento'
+                        : 'Erro ao validar chave'}
+                    </p>
+                    <p
+                      className={`text-sm mt-1 ${
+                        errorType === 'warning'
+                          ? 'text-orange-700'
+                          : 'text-red-700'
+                      }`}
+                    >
+                      {error}
+                    </p>
                   </div>
                 </div>
               )}
