@@ -1,0 +1,371 @@
+import { useState, useEffect } from 'react';
+import Login from '@/pages/Login';
+import Home from '@/pages/Home';
+import CreateValidation, { ValidationDraft } from '@/pages/CreateValidation';
+import SystemSelection, { SelectedSystem } from '@/pages/SystemSelection';
+import ValidationCreated from '@/pages/ValidationCreated';
+import EnterKey from '@/pages/EnterKey';
+import ValidationExecution from '@/pages/ValidationExecution';
+import Finalization from '@/pages/Finalization';
+import PreviousValidations from '@/pages/PreviousValidations';
+import KnowledgeBase from '@/pages/KnowledgeBase';
+import Settings from '@/pages/Settings';
+import ValidationStructure from '@/pages/ValidationStructure';
+import EditValidation from '@/pages/EditValidation';
+import EditValidationFields, { ValidationField } from '@/pages/EditValidationFields';
+import { auditLog } from '@/utils/auditLog';
+import { seedDemoLogs } from '@/utils/seedLogs';
+import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api';
+
+export interface User {
+  name: string;
+  email: string;
+  role: UserRole;
+  department: string;
+}
+
+export interface ValidationItem {
+  id: string;
+  item: string;
+  status: 'OK' | 'Não se aplica' | 'Falhou' | '';
+  evidence: File | null;
+  evidencePreview: string | null; 
+  comment: string;
+  executionId?: string
+}
+
+export interface ValidationSession {
+  sessionId: string;
+  user: string;
+  department: string;
+  division: string;
+  system: string;
+  environment: string;
+  setor: string;
+  gmudNumber?: string;
+  accessKey?: string;
+  startTime: Date;
+  endTime?: Date;
+  items: ValidationItem[];
+  status: 'IN_PROGRESS' | 'FAILED' | 'APPROVED';
+  structureVersion: string;
+  auditorConfirmation?: boolean;
+  testerName?: string;
+  // Novos campos para rastreamento
+  validationName?: string;
+  validationType?: string;
+  responsible?: string;
+  validationStatus?: 'RASCUNHO' | 'CRIADA' | 'CONFIGURADA' | 'EXECUTADA';
+}
+
+type Screen = 
+  | 'login' 
+  | 'home' 
+  | 'create-validation'
+  | 'system-selection'
+  | 'edit-validation-fields'
+  | 'validation-created'
+  | 'validation-structure'
+  | 'enter-key'
+  | 'edit-validation'
+  | 'validation-execution' 
+  | 'finalization'
+  | 'previous-validations'
+  | 'knowledge-base'
+  | 'settings';
+
+export default function App() {
+  const { user, isAuthenticated, logout } = useAuth(); 
+  const [currentScreen, setCurrentScreen] = useState<Screen>('login');
+  const [currentValidation, setCurrentValidation] = useState<ValidationSession | null>(null);
+  const [validationDraft, setValidationDraft] = useState<ValidationDraft | null>(null);
+  const [selectedSystems, setSelectedSystems] = useState<SelectedSystem[]>([]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setCurrentScreen('home');
+    } else {
+      setCurrentScreen('login');
+    }
+  }, [isAuthenticated]);
+  
+  // Inicializar logs de demonstração
+  useEffect(() => {
+    seedDemoLogs();
+  }, []);
+
+  const navigateTo = (screen: Screen) => {
+    setCurrentScreen(screen);
+  };
+
+    const handleLogout = () => {
+    logout();
+  };
+
+  // Nova função: Iniciar processo de criação de validação
+  const startValidationProcess = () => {
+    setCurrentScreen('create-validation');
+  };
+
+  // Nova função: Receber dados da validação criada e avançar para seleção de sistema
+  const handleValidationCreated = (draft: ValidationDraft) => {
+    setValidationDraft(draft);
+    
+    // Registrar log de criação de validação
+    auditLog.register({
+      user: user!.name,
+      department: user!.department,
+      action: 'INICIO_VALIDACAO',
+      details: `Validação criada: ${draft.name}, Tipo: ${draft.type}, Status: ${draft.status}`
+    });
+    
+    setCurrentScreen('system-selection');
+  };
+
+  // Nova função: Receber sistemas selecionados e ir para edição de campos
+  const handleSystemsSelected = (systems: SelectedSystem) => {
+    if (!validationDraft) {
+      alert('Erro: Nenhuma validação em rascunho encontrada');
+      setCurrentScreen('home');
+      return;
+    }
+
+    setSelectedSystems(systems);
+    
+    // Ir para tela de edição de campos de validação
+    setCurrentScreen('edit-validation-fields');
+  };
+
+  // Nova função: Receber campos editados e finalizar criação
+  const handleValidationFieldsEdited = (updatedDraft: ValidationDraft) => {
+    setValidationDraft(updatedDraft);
+
+    auditLog.register({
+    user: user!.name,
+    department: user!.department,
+    action: 'CRIACAO_VALIDACAO',
+    details: `Validação configurada: ${updatedDraft.name}, Sistemas: ${selectedSystems.length}, Status: AGUARDANDO_TESTE`
+  });
+
+    setCurrentScreen('validation-created');
+  };
+
+const handleUpdateItem = (itemId: string, updates: Partial<ValidationItem>) => {
+  setCurrentValidation((prev) => {
+    if (!prev) return prev;
+
+    return {
+      ...prev,
+      items: prev.items.map((item) =>
+        item.id === itemId ? { ...item, ...updates } : item
+      )
+    };
+  });
+};
+
+const handleFinalize = async (signature: string) => {
+
+  if (!currentValidation) return;
+
+  try {
+
+    const response = await api.post(
+      `/validation-sessions/${currentValidation.sessionId}/finalize/`,
+      {
+        signature: signature
+      }
+    );
+
+    setCurrentValidation({
+      ...currentValidation,
+      status: response.data.status,
+      endTime: new Date()
+    });
+
+    setCurrentScreen("finalization");
+
+  } catch (error) {
+
+    console.error("Erro ao finalizar:", error);
+
+  }
+};
+
+  const returnToHome = () => {
+    setCurrentValidation(null);
+    setValidationDraft(null);
+    setSelectedSystems([]);
+    setCurrentScreen('home');
+  };
+
+  const handleEditValidation = (validation: ValidationSession) => {
+    setCurrentValidation(validation);
+    // Aqui você pode redirecionar para uma tela específica de edição ou abrir modal
+    // Por enquanto, vamos apenas voltar para home
+    returnToHome();
+  };
+
+ return (
+  <div className="min-h-screen bg-white">
+    {currentScreen === 'login' && <Login />}
+
+    {currentScreen === 'home' && (
+      <Home onNavigate={navigateTo}
+      />
+    )}
+      {currentScreen === 'create-validation' && user && (
+        <CreateValidation 
+          onNext={handleValidationCreated}
+          onBack={returnToHome}
+          user={user}
+        />
+      )}
+      {currentScreen === 'system-selection' && user && validationDraft && (
+        <SystemSelection 
+          validationDraft={validationDraft}
+          onNext={handleSystemsSelected}
+          onBack={() => {
+            setValidationDraft(null);
+            returnToHome();
+          }}
+          user={user}
+        />
+      )}
+      {currentScreen === 'edit-validation-fields' && user && validationDraft && selectedSystems.length > 0 && (
+        <EditValidationFields
+          validationDraft={validationDraft}
+          selectedSystems={selectedSystems}
+          onNext={handleValidationFieldsEdited}
+          onBack={() => {
+            setSelectedSystems([]);
+            setCurrentScreen('system-selection');
+          }}
+          user={user}
+        />
+      )}
+      {/* Proteção: Se tentar acessar system-selection sem validationDraft */}
+      {currentScreen === 'system-selection' && user && !validationDraft && (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-md p-8 max-w-md mx-auto text-center">
+            <div className="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">
+              Fluxo Incompleto
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Você precisa primeiro criar uma validação antes de selecionar sistemas. Siga o fluxo correto:
+              <br /><br />
+              <strong>1. Criar Validação → 2. Selecionar Sistema → 3. Executar</strong>
+            </p>
+            <button
+              onClick={returnToHome}
+              className="bg-[#013171] text-white px-6 py-3 rounded-md hover:bg-[#024a9f] transition-colors font-medium"
+            >
+              Voltar e Criar Validação
+            </button>
+          </div>
+        </div>
+      )}
+      {currentScreen === 'validation-structure' && user && (
+        <ValidationStructure
+          onBack={returnToHome}
+          user={user}
+        />
+      )}
+      {/* Tela de Validação Criada - Mostra chave e conclui criação */}
+      {currentScreen === 'validation-created' && user && validationDraft && selectedSystems.length > 0 && (
+        <ValidationCreated
+          validationDraft={validationDraft}
+          selectedSystems={selectedSystems}
+          onComplete={returnToHome}
+          onCreateAnother={() => {
+            setValidationDraft(null);
+            setSelectedSystems([]);
+            setCurrentScreen('create-validation');
+          }}
+          user={user}
+        />
+      )}
+      {currentScreen === 'enter-key' && user && (
+        <EnterKey
+          onBack={returnToHome}
+          onSuccess={(validation) => {
+            setCurrentValidation(validation);
+            setCurrentScreen('validation-execution');
+          }}
+          user={user}
+        />
+      )}
+      {currentScreen === 'validation-execution' && currentValidation && user && (
+        <ValidationExecution
+          validation={currentValidation}
+          onUpdateItem={handleUpdateItem}
+          onFinalize={() => setCurrentScreen('finalization')}
+          onBack={() => setCurrentScreen('home')}
+          user={user}
+        />
+      )}
+      {/* Proteção: Se tentar acessar validation-execution sem currentValidation, redireciona para home */}
+      {currentScreen === 'validation-execution' && !currentValidation && user && (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-md p-8 max-w-md mx-auto text-center">
+            <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">
+              Nenhuma validação ativa
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Para executar uma validação, você precisa primeiro criá-la seguindo o fluxo correto.
+            </p>
+            <button
+              onClick={returnToHome}
+              className="bg-[#013171] text-white px-6 py-3 rounded-md hover:bg-[#024a9f] transition-colors font-medium"
+            >
+              Voltar para o Início
+            </button>
+          </div>
+        </div>
+      )}
+      {currentScreen === 'finalization' && currentValidation && user && (
+        <Finalization
+          validation={currentValidation}
+          onComplete={currentValidation}
+          returnToHome={returnToHome}
+          user={user}
+        />
+      )}
+      {currentScreen === 'previous-validations' && user && (
+        <PreviousValidations
+          onBack={returnToHome}
+          user={user}
+        />
+      )}
+      {currentScreen === 'knowledge-base' && user && (
+        <KnowledgeBase
+          onBack={returnToHome}
+          user={user}
+        />
+      )}
+      {currentScreen === 'settings' && user && (
+        <Settings
+          onBack={returnToHome}
+          user={user}
+        />
+      )}
+      {currentScreen === 'edit-validation' && user && (
+        <EditValidation
+          onBack={returnToHome}
+          onEdit={handleEditValidation}
+          user={user}
+        />
+      )}
+    </div>
+  );
+}

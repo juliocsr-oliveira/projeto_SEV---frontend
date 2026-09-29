@@ -1,0 +1,536 @@
+import { useState, useEffect } from 'react';
+import { User, ValidationSession } from '../App';
+import Header from '../components/Header';
+import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api'
+import { ArrowLeft, Search, Eye, Filter, Download, FileText, Table as TableIcon } from 'lucide-react';
+import { auditLog } from '../utils/auditLog';
+
+interface PreviousValidationsProps {
+  onBack: () => void;
+  user: User;
+}
+
+export default function PreviousValidations({ onBack, user }: PreviousValidationsProps) {
+  const { User, isAuthenticated, logout } = useAuth();
+  const [validations, setValidations] = useState<ValidationSession[]>([]);
+  const [filteredValidations, setFilteredValidations] = useState<ValidationSession[]>([]);
+  const [filters, setFilters] = useState({
+    system: '',
+    environment: '',
+    user: '',
+    status: '',
+    setor: ''
+  });
+  const [searchDate, setSearchDate] = useState('');
+  const [selectedValidation, setSelectedValidation] = useState<ValidationSession | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+useEffect(() => {
+  const fetchValidations = async () => {
+    try {
+      const response = await api.get('/validation-sessions/');
+
+      console.log(response.data);
+      console.log(response.data.results);
+      
+  const mapped = await Promise.all(
+    response.data.results.map(async (session: any) => {
+      const planResponse = await api.get(`/test-plans/${session.test_plan}/`);
+      const plan = planResponse.data;
+
+      const isFinished = ['FINISHED', 'COMPLETED', 'APPROVED'].includes(session.status);
+
+      return {
+        id: session.id,
+        accessKey: session.access_key,
+        system: session.test_plan_system || '',
+        environment: session.test_plan_environment || '',
+        createdBy: plan.created_by_name || '-',
+        executedBy: session.started_by_name || '-',
+        user: session.created_by_name || '-',
+        status: isFinished ? 'concluida' : 'em_andamento',
+        setor: session.setor || '',
+        startTime: session.started_at,
+        items: session.executions?.map((exec: any) => ({
+          id: exec.id,
+          item: exec.test_case_name,
+          status: exec.status,
+          comment: exec.comment,
+          evidence: exec.evidences?.[0]?.file || null
+        })) || []
+      };
+    })  
+  );
+
+      setValidations(mapped);
+      setFilteredValidations(mapped);
+
+    } catch (error) {
+      console.error("Erro ao buscar validações:", error);
+    }
+  };
+
+  fetchValidations();
+}, []);
+
+useEffect(() => {
+  auditLog.register({
+    user: user.name,
+    department: user.department,
+    action: 'CONSULTA_VALIDACOES',
+    details: 'Acesso à tela de validações anteriores'
+  });
+  }, [user]);
+
+  useEffect(() => {
+    // Aplicar filtros
+    let filtered = [...validations];
+
+    if (filters.system) {
+      filtered = filtered.filter(v => v.system === filters.system);
+    }
+    if (filters.environment) {
+      filtered = filtered.filter(v => v.environment === filters.environment);
+    }
+    if (filters.user) {
+      filtered = filtered.filter(v => v.user.toLowerCase().includes(filters.user.toLowerCase()));
+    }
+    if (filters.status) {
+      filtered = filtered.filter(v => v.status === filters.status);
+    }
+    if (filters.setor) {
+      filtered = filtered.filter(v => v.setor?.toLowerCase().includes(filters.setor.toLowerCase()));
+    }
+    if (searchDate) {
+      filtered = filtered.filter(v => {
+        const validationDate = new Date(v.startTime).toISOString().split('T')[0];
+        return validationDate === searchDate;
+      });
+    }
+
+    setFilteredValidations(filtered);
+  }, [filters, searchDate, validations]);
+
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      system: '',
+      environment: '',
+      user: '',
+      status: '',
+      setor: ''
+    });
+    setSearchDate('');
+  };
+
+  const handleOpen = async (id: number) => {
+  try {
+    const response = await api.get(`/validation-sessions/${id}/`);
+    const setorAtual = response.data.setor || '';
+    const KeyDoSetor = response.data.access_key || '';
+
+    const mapped = {
+      id: response.data.id,
+      accessKey: KeyDoSetor,
+      system: response.data.test_plan_system,
+      environment: response.data.test_plan_environment,
+      setor: response.data.setor || '',
+      user: response.data.started_by_name || `User ${response.data.started_by}`,
+      executedBy: response.data.started_by_name || '-',
+      startTime: response.data.started_at,
+      items: response.data.executions?.map((exec: any) => ({
+        id: exec.id,
+        item: exec.test_case_name,
+        status: exec.status,
+        comment: exec.comment,
+        evidence: exec.evidences?.[0]?.file || null
+      })) || []
+    };
+
+    setSelectedValidation(mapped);
+
+  } catch (error) {
+    console.error("Erro ao abrir validação:", error);
+  }
+};
+
+  const handleDownloadExcel = async (validation: ValidationSession) => {
+    try {
+      const response = await api.get(
+        `/validation-sessions/${validation.id}/export-xlsx/`,
+        { responseType: 'blob' }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `validacao_${validation.setor || validation.id}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      auditLog.register({
+        user: user.name,
+        department: user.department,
+        action: 'EXPORTACAO_RELATORIO',
+        system: validation.system,
+        environment: validation.environment,
+        validationId: validation.id,
+        details: 'Download de XLSX'
+      });
+    } catch (error) {
+      console.error("Erro ao exportar planilha:", error);
+      alert('Não foi possível gerar a planilha. Tente novamente.');
+    }
+  };
+
+  const getStats = (items: any[]) => {
+  return {
+    ok: items.filter(i => i.status === 'OK').length,
+    failed: items.filter(i => i.status === 'FALHOU').length,
+    notApplicable: items.filter(i => i.status === 'NAO_APLICA').length,
+  };
+};
+
+  const stats = selectedValidation ? getStats(selectedValidation.items) : null;
+
+  const getStatusBadge = (validation: any) => {
+  // 🔸 não finalizada
+  if (validation.status !== 'concluida') {
+    return {
+      label: 'Em andamento',
+      className: 'bg-yellow-100 text-yellow-800'
+    };
+  }
+
+  // 🔸 verifica se tem algo diferente de OK
+  const hasError = validation.items?.some(
+    (item: any) => item.status !== 'OK'
+  );
+
+  if (hasError) {
+    return {
+      label: 'Concluída',
+      className: 'bg-red-100 text-red-800'
+    };
+  }
+
+  // 🔸 tudo OK
+  return {
+    label: 'Concluída',
+    className: 'bg-green-100 text-green-800'
+  };
+};
+
+  const badge = selectedValidation ? getStatusBadge(selectedValidation) : null;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header user={user} onLogout={() => {logout(); onNavigate('login');}}/>
+
+    {selectedImage && (
+    <div 
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[999]"
+      onClick={() => setSelectedImage(null)}
+    >
+      <button
+      onClick={() => setSelectedImage(null)}
+      className="absolute top-6 right-6 text-white text-3xl font-bold hover:scale-110 transition"
+      >
+        x        
+      </button>
+
+      <img
+        src={selectedImage}
+        alt="Evidência"
+        className="max-w-[90%] max-h-[90%] rounded shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  )}
+      
+      <main className="container mx-auto px-6 py-8">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-[#013171] hover:text-[#024a9f] mb-6 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Voltar
+        </button>
+
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+          <div className="bg-[#013171] text-white p-6">
+            <h2 className="text-2xl font-bold mb-2">Validações Anteriores</h2>
+            <p className="text-blue-200">Histórico e consulta de validações realizadas</p>
+          </div>
+
+          {/* Filtros */}
+          <div className="p-6 bg-gray-50 border-b border-gray-200">
+            <div className="flex items-center gap-2 mb-4">
+              <Filter className="w-5 h-5 text-gray-600" />
+              <h3 className="font-semibold text-gray-800">Filtros</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <select
+                value={filters.system}
+                onChange={(e) => setFilters({ ...filters, system: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+              >
+                <option value="">Sistema</option>
+                <option value="Encomendas">Encomendas</option>
+                <option value="SEV">SEV</option>
+                <option value="Jornada Digital">Jornada Digital</option>
+              </select>
+
+              <select
+                value={filters.environment}
+                onChange={(e) => setFilters({ ...filters, environment: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+              >
+                <option value="">Ambiente</option>
+                <option value="QA">QA</option>
+                <option value="HMG">HMG</option>
+                <option value="PRÉ-PRODUÇÃO">PRÉ-PRODUÇÃO</option>
+                <option value="PRD">PRD</option>
+              </select>
+
+              <input
+                type="text"
+                value={filters.user}
+                onChange={(e) => setFilters({ ...filters, user: e.target.value })}
+                placeholder="Usuário"
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+              />
+
+              <input
+                type="date"
+                value={searchDate}
+                onChange={(e) => setSearchDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+              />
+
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+              >
+                <option value="">Status</option>
+                <option value="concluida">Concluída</option>
+                <option value="em_andamento">Em andamento</option>
+              </select>
+
+              <input
+                type="text"
+                value={filters.setor}
+                onChange={(e) => setFilters({ ...filters, setor: e.target.value })}
+                placeholder="Setor"
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#013171] focus:border-transparent outline-none"
+              />
+            </div>
+            <div className="mt-3">
+              <button
+                onClick={clearFilters}
+                className="text-sm text-[#013171] hover:underline"
+              >
+                Limpar filtros
+              </button>
+            </div>
+          </div>
+
+          {/* Tabela */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-100 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Data</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Sistema</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Ambiente</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Criado por</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Setor</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredValidations.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                      <Search className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                      <p>Nenhuma validação encontrada</p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredValidations.map((validation, index) => {
+                    const badge = getStatusBadge(validation);
+                    return (
+                    <tr key={validation.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-6 py-4 border-b border-gray-200 text-sm">
+                        {formatDate(validation.startTime)}
+                      </td>
+                      <td className="px-6 py-4 border-b border-gray-200 text-sm">
+                        {validation.system}
+                      </td>
+                      <td className="px-6 py-4 border-b border-gray-200 text-sm">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                          {validation.environment}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 border-b border-gray-200 text-sm">
+                        {validation.createdBy}
+                      </td>
+                      <td className="px-6 py-4 border-b border-gray-200 text-sm">
+                        {validation.setor || '-'}
+                      </td>
+                      <td className="px-6 py-4 border-b border-gray-200 text-sm">
+                          <span className={`px-2 py-1 rounded text-xs ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                      </td>
+                      <td className="px-6 py-4 border-b border-gray-200">
+                        <button
+                          onClick={() => handleOpen(validation.id)}
+                          className="flex items-center gap-1 text-[#013171] hover:text-[#024a9f] transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span className="text-sm">Abrir</span>
+                        </button>
+                        <button
+                          onClick={() => handleDownloadExcel(validation)}
+                          className="flex items-center gap-1 text-[#013171] hover:text-[#024a9f] transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span className="text-sm">Excel</span>
+                        </button>
+                      </td>
+                    </tr>
+                  )})
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+
+      {/* Modal de detalhes */}
+      {selectedValidation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#013171] text-white p-6 sticky top-0">
+              <h3 className="text-xl font-bold mb-2">Detalhes da Validação</h3>
+
+              {selectedValidation.accessKey &&(
+                <span className="inline-block mt-2 text-sm bg-white/20 px-3 py-1 rounded">
+                  {selectedValidation.accessKey}
+                </span>
+              )}
+            </div>
+
+            <div className="p-6 space-y-6">
+                <div>
+                  <span className="text-gray-600">Sistema:</span>
+                  <p className="font-medium">{selectedValidation.system}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Ambiente:</span>
+                  <p className="font-medium">{selectedValidation.environment}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Executado por:</span>
+                  <p className="font-medium">{selectedValidation.executedBy}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Setor:</span>
+                  <p className="font-medium">{selectedValidation.setor || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Data:</span>
+                  <p className="font-medium">{formatDate(selectedValidation.startTime)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-800 mb-3">
+                        Resumo da Validação
+                      </h3>
+
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {stats.ok}
+                          </div>
+                          <div className="text-xs text-gray-600">OK</div>
+                        </div>
+
+                        <div>
+                          <div className="text-2xl font-bold text-red-600">
+                            {stats.failed}
+                          </div>
+                          <div className="text-xs text-gray-600">Falhou</div>
+                        </div>
+
+                        <div>
+                          <div className="text-2xl font-bold text-yellow-600">
+                            {stats.notApplicable}
+                          </div>
+                          <div className="text-xs text-gray-600">Não se aplica</div>                          
+                        </div>                        
+                      </div>        
+                    </div>
+
+              <div>
+                <h4 className="font-semibold mb-3">Itens Validados:</h4>
+                <div className="space-y-2">
+                  {selectedValidation.items.map((item) => (
+                    <div key={item.id} className="border border-gray-200 rounded p-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <p className="text-sm flex-1">{item.item}</p>
+                        <span className={`px-2 py-1 rounded text-xs whitespace-nowrap ${
+                          item.status === 'OK' ? 'bg-green-100 text-green-800' :
+                          item.status === 'FALHOU' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {item.status === 'NAO_APLICA' ? 'Não se aplica' : item.status }
+                        </span>
+                      </div>
+                      {item.comment && (
+                        <p className="text-xs text-gray-600 mt-2">Comentário: {item.comment}</p>
+                      )}
+                      {item.evidence && (
+                        <div className ="mt-3">
+                          <p className="text-xs text-gray-500 mb-1">Evidência</p>
+                          
+                          <img
+                            src={item.evidence}
+                            alt="Evidência"
+                            className="w-32 h-32 object-cover rounded border cursor-pointer hover:scale-105 transition"
+                            onClick={() => setSelectedImage(item.evidence)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedValidation(null)}
+                className="w-full bg-[#013171] text-white py-3 rounded-md hover:bg-[#024a9f] transition-colors font-medium"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+        </div>
+  );
+}
