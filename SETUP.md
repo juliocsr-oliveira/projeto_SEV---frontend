@@ -2,19 +2,22 @@
 
 ## 📋 Requisitos do Sistema
 
-### 1. **Node.js** (versão 18 ou superior)
-- Download: https://nodejs.org/
-- Verificar instalação: `node --version`
+### 1\. **Node.js** (versão 18 ou superior)
 
-### 2. **npm** (já vem junto com o Node.js)
-- Verificar instalação: `npm --version`
+* Download: https://nodejs.org/
+* Verificar instalação: `node --version`
 
-### 3. **Backend Django rodando**
+### 2\. **npm** (já vem junto com o Node.js)
+
+* Verificar instalação: `npm --version`
+
+### 3\. **Backend Django rodando**
+
 Este frontend consome uma API Django (projeto separado). Ela precisa estar no ar em
 `http://localhost:8000/` antes de logar no sistema — veja o `.env.example` do
 backend e o repositório correspondente para subir o Postgres + Django.
 
----
+\---
 
 ## 🚀 Instalação e Execução
 
@@ -22,27 +25,33 @@ Todo o projeto vive dentro da pasta `client/`. Não existe mais nenhuma estrutur
 na raiz (isso foi limpo — veja a seção "Histórico" no fim deste arquivo).
 
 ### Passo 1: Entrar na pasta do projeto
+
 ```bash
 cd client
 ```
 
 ### Passo 2: Instalar dependências
+
 ```bash
 npm install
 ```
 
 ### Passo 3: Executar em desenvolvimento
+
 ```bash
 npm run dev
 ```
 
 O servidor de desenvolvimento inicia em:
-- **Local**: http://localhost:3000/
+
+* **Local**: http://localhost:3000/
 
 ### Passo 4: Build para produção (opcional)
+
 ```bash
 npm run build
 ```
+
 Gera os arquivos estáticos em `client/dist/`. Como o servidor Express de
 produção foi removido junto com a limpeza (nunca chegou a ser usado), o
 deploy desses arquivos estáticos deve ser resolvido antes de ir para
@@ -50,7 +59,7 @@ produção — pode ser um Nginx, o próprio `whitenoise`/Django servindo os
 estáticos, ou um servidor Node simples, dependendo de como a infra final for
 decidida.
 
----
+\---
 
 ## 🔐 Login
 
@@ -58,21 +67,22 @@ O login é feito contra o backend Django (endpoint `/api/auth/token/`, JWT).
 Não existem credenciais "mágicas" por palavra-chave no e-mail — é preciso ter
 um usuário real cadastrado no Django, com um dos papéis:
 
-- **TESTADOR** — executa validações usando chaves de acesso
-- **AUDITOR** — cria validações, cadastra itens, gera chaves de acesso
-- **ADMIN** — acesso total (gestão de usuários, logs, configurações)
+* **TESTADOR** — executa validações usando chaves de acesso
+* **AUDITOR** — cria validações, cadastra itens, gera chaves de acesso
+* **ADMIN** — acesso total (gestão de usuários, logs, configurações)
 
 Para criar o primeiro usuário administrador, use o Django normalmente:
+
 ```bash
 python manage.py createsuperuser
 ```
 
----
+\---
 
 ## 📁 Estrutura do Projeto
 
 ```
-projeto_SEV---frontend-master/
+projeto\_SEV---frontend-master/
 └── client/                          # Todo o projeto frontend vive aqui
     ├── public/                      # Arquivos estáticos
     ├── src/
@@ -96,11 +106,12 @@ projeto_SEV---frontend-master/
     └── tsconfig.json
 ```
 
----
+\---
 
 ## 🎯 Fluxo de Uso
 
 ### Para Auditores/Administradores:
+
 1. Fazer login
 2. Clicar em "Criar Validação" e preencher dados básicos (nome, tipo, divisão, setores)
 3. Cadastrar os itens a serem validados (manualmente ou importando uma planilha Excel)
@@ -108,13 +119,14 @@ projeto_SEV---frontend-master/
 5. Compartilhar cada chave com o testador responsável por aquele setor
 
 ### Para Testadores:
+
 1. Fazer login
 2. Inserir a chave de acesso recebida
 3. Executar a validação: preencher status de cada item e anexar evidência
 4. Adicionar comentários se necessário
 5. Finalizar a validação
 
----
+\---
 
 ## 🛠️ Comandos Disponíveis (rodar sempre dentro de `client/`)
 
@@ -126,34 +138,29 @@ npm run check     # Verificar tipos TypeScript (tsc --noEmit)
 npm run format    # Formatar código com Prettier
 ```
 
----
+\---
 
 ## 🐛 Troubleshooting
 
 ### Erro: "Module not found" / dependências bugadas
+
 ```bash
-rm -rf node_modules package-lock.json
+rm -rf node\_modules package-lock.json
 npm install
 ```
 
 ### Erro: "Port 3000 already in use"
+
 ```bash
 npm run dev -- --port 3001
 ```
 
 ### Tela de login não avança / erro de rede
+
 Confirme que o backend Django está rodando em `http://localhost:8000/` — o
 endereço da API está fixo em `client/src/services/api.ts`.
 
----
+\---
 
-## 📜 Histórico
+## 
 
-Este repositório foi originalmente gerado por uma plataforma de scaffolding
-por IA (Manus), que criava uma estrutura na raiz do projeto (servidor Express,
-plugins de telemetria de desenvolvimento, `pnpm` como gerenciador de pacotes).
-Essa estrutura nunca chegou a ser usada na prática — o desenvolvimento sempre
-rodou a partir da pasta `client/`, com `npm`. Toda a estrutura da raiz (e um
-componente de telemetria/debug que enviava logs de console e rede para um
-servidor local de desenvolvimento) foi removida numa faxina de limpeza do
-projeto, mantendo apenas o que estava realmente em uso.
